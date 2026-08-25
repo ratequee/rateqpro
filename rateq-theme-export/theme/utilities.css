@@ -1,0 +1,34 @@
+/* Optional RateQ surface utilities (Tailwind class names from globals.css).
+   Use after your Tailwind build, or adapt class names to your stack. */
+
+.surface-page {
+  background: #f4f5f7;
+}
+.dark .surface-page {
+  background: #323232;
+}
+
+.surface-card {
+  border-radius: 1rem;
+  border: 1px solid #f1f5f9;
+  background: #fff;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
+}
+.dark .surface-card {
+  border-color: #4a4a4a;
+  background: #383838;
+}
+
+.text-primary {
+  color: #373737;
+}
+.dark .text-primary {
+  color: #f1f5f9;
+}
+
+.text-secondary {
+  color: #6b7280;
+}
+.dark .text-secondary {
+  color: #94a3b8;
+}

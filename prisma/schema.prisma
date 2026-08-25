@@ -1,0 +1,647 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  MANAGER
+  EMPLOYEE
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum ProjectStatus {
+  PLANNED
+  ACTIVE
+  ON_HOLD
+  COMPLETED
+  CANCELLED
+}
+
+enum RecordStatus {
+  POSTED
+  VOIDED
+  REVERSED
+}
+
+enum TransactionType {
+  DEPOSIT
+  WITHDRAWAL
+}
+
+enum ExpenseKind {
+  PROJECT
+  OPERATING
+}
+
+enum ProjectExpenseCategory {
+  MATERIALS
+  SUBCONTRACTORS
+  LABOR
+  EQUIPMENT
+  TRANSPORTATION
+  OTHER
+}
+
+enum OperatingExpenseCategory {
+  RENT
+  SALARIES
+  VEHICLES
+  ELECTRICITY
+  INTERNET
+  MARKETING
+  OTHER
+}
+
+enum CashAdvanceStatus {
+  OPEN
+  PARTIALLY_SETTLED
+  SETTLED
+  OVERDUE
+}
+
+enum EmployeeStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum AssetCategory {
+  VEHICLES
+  EQUIPMENT
+  FURNITURE
+  DEVICES
+  OTHER
+}
+
+enum AssetStatus {
+  ACTIVE
+  DISPOSED
+  UNDER_MAINTENANCE
+}
+
+enum ObligationCategory {
+  SALARIES
+  RENT
+  HOUSING
+  VEHICLES
+  SUBSCRIPTIONS
+  OTHER
+}
+
+enum ObligationFrequency {
+  MONTHLY
+  QUARTERLY
+  YEARLY
+  ONE_TIME
+}
+
+enum ObligationStatus {
+  ACTIVE
+  PAUSED
+  COMPLETED
+}
+
+enum NotificationType {
+  UPCOMING_OBLIGATION
+  OVERDUE_OBLIGATION
+  LOW_BALANCE
+  OPEN_CASH_ADVANCE
+  PROJECT_PAYMENT_DUE
+  SYSTEM_ACTIVITY
+}
+
+enum AttachmentOwnerType {
+  TRANSACTION
+  PROJECT
+  CONTRACT
+  EXPENSE
+  CASH_ADVANCE
+  ASSET
+  CREDIT_CARD_TRANSACTION
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  PAUSED
+}
+
+model Company {
+  id           String   @id @default(cuid())
+  name         String
+  slug         String   @unique
+  logo         String?
+  email        String?
+  phone        String?
+  address      String?
+  currencyCode String   @default("QAR")
+  dateFormat   String   @default("dd/MM/yyyy")
+  locale       String   @default("en")
+  timezone     String   @default("Asia/Qatar")
+  isDemo       Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  users                   User[]
+  sessions                Session[]
+  clients                 Client[]
+  projects                Project[]
+  contracts               Contract[]
+  bankAccounts            BankAccount[]
+  bankTransactions        BankTransaction[]
+  expenses                Expense[]
+  cashAdvances            CashAdvance[]
+  creditCards             CreditCard[]
+  employees               Employee[]
+  payrolls                Payroll[]
+  assets                  Asset[]
+  obligations             Obligation[]
+  notifications           Notification[]
+  attachments             Attachment[]
+  auditLogs               AuditLog[]
+  subscription            Subscription?
+  userNotificationPrefs   UserNotificationPreference[]
+
+  @@index([slug])
+}
+
+model User {
+  id           String     @id @default(cuid())
+  companyId    String
+  company      Company    @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  email        String     @unique
+  passwordHash String
+  name         String
+  role         UserRole
+  status       UserStatus @default(ACTIVE)
+  image        String?
+  lastLoginAt  DateTime?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  sessions            Session[]
+  auditLogs           AuditLog[]
+  createdTransactions BankTransaction[]        @relation("TransactionCreatedBy")
+  createdExpenses     Expense[]                @relation("ExpenseCreatedBy")
+  assignedAssets      Asset[]                  @relation("AssetAssignee")
+  payrolls            Payroll[]
+  cashAdvances        CashAdvance[]
+  notifications       Notification[]
+  notificationPref    UserNotificationPreference?
+
+  @@index([companyId])
+  @@index([companyId, role])
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([companyId])
+  @@index([expiresAt])
+}
+
+model Permission {
+  id        String           @id @default(cuid())
+  key       String           @unique
+  module    String
+  action    String
+  roles     RolePermission[]
+}
+
+model RolePermission {
+  role         UserRole
+  permissionId String
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([role, permissionId])
+  @@index([permissionId])
+}
+
+model Client {
+  id        String   @id @default(cuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  name      String
+  email     String?
+  phone     String?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  projects  Project[]
+  contracts Contract[]
+
+  @@index([companyId])
+  @@index([companyId, name])
+}
+
+model Project {
+  id             String        @id @default(cuid())
+  companyId      String
+  company        Company       @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  clientId       String?
+  client         Client?       @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  code           String
+  name           String
+  contractValue  Decimal       @default(0) @db.Decimal(19, 4)
+  startDate      DateTime?     @db.Date
+  endDate        DateTime?     @db.Date
+  status         ProjectStatus @default(PLANNED)
+  notes          String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  contracts           Contract[]
+  transactions        BankTransaction[]
+  expenses            Expense[]
+  payrollAllocations  PayrollAllocation[]
+  cashAdvances        CashAdvance[]
+
+  @@unique([companyId, code])
+  @@index([companyId, status])
+  @@index([companyId, clientId])
+}
+
+model Contract {
+  id            String    @id @default(cuid())
+  companyId     String
+  company       Company   @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  projectId     String
+  project       Project   @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  clientId      String?
+  client        Client?   @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  number        String
+  value         Decimal   @db.Decimal(19, 4)
+  contractDate  DateTime  @db.Date
+  startDate     DateTime? @db.Date
+  endDate       DateTime? @db.Date
+  paymentTerms  String?
+  notes         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([companyId, number])
+  @@index([companyId, projectId])
+}
+
+model BankAccount {
+  id          String   @id @default(cuid())
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  name        String
+  bankName    String?
+  accountNo   String?
+  isPrimary   Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  transactions BankTransaction[]
+
+  @@index([companyId])
+}
+
+model BankTransaction {
+  id              String          @id @default(cuid())
+  companyId       String
+  company         Company         @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  bankAccountId   String
+  bankAccount     BankAccount     @relation(fields: [bankAccountId], references: [id], onDelete: Restrict)
+  projectId       String?
+  project         Project?        @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  reference       String
+  date            DateTime        @db.Date
+  type            TransactionType
+  amount          Decimal         @db.Decimal(19, 4)
+  description     String
+  category        String?
+  notes           String?
+  status          RecordStatus    @default(POSTED)
+  voidedAt        DateTime?
+  reversedOfId    String?
+  reversedOf      BankTransaction?  @relation("TransactionReversal", fields: [reversedOfId], references: [id], onDelete: SetNull)
+  reversals       BankTransaction[] @relation("TransactionReversal")
+  createdById     String
+  createdBy       User            @relation("TransactionCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  expenses Expense[]
+
+  @@unique([companyId, reference])
+  @@index([companyId, date])
+  @@index([companyId, status])
+  @@index([companyId, projectId])
+  @@index([companyId, type])
+  @@index([bankAccountId])
+}
+
+model Expense {
+  id              String          @id @default(cuid())
+  companyId       String
+  company         Company         @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  kind            ExpenseKind
+  projectId       String?
+  project         Project?        @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  transactionId   String?
+  transaction     BankTransaction? @relation(fields: [transactionId], references: [id], onDelete: SetNull)
+  date            DateTime        @db.Date
+  amount          Decimal         @db.Decimal(19, 4)
+  category        String
+  description     String
+  notes           String?
+  status          RecordStatus    @default(POSTED)
+  voidedAt        DateTime?
+  createdById     String
+  createdBy       User            @relation("ExpenseCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([companyId, kind, date])
+  @@index([companyId, projectId])
+  @@index([companyId, status])
+}
+
+model CashAdvance {
+  id           String            @id @default(cuid())
+  companyId    String
+  company      Company           @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  number       String
+  userId       String?
+  user         User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  personName   String
+  projectId    String?
+  project      Project?          @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  amountIssued Decimal           @db.Decimal(19, 4)
+  amountSpent  Decimal           @default(0) @db.Decimal(19, 4)
+  issueDate    DateTime          @db.Date
+  dueDate      DateTime?         @db.Date
+  status       CashAdvanceStatus @default(OPEN)
+  notes        String?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  settlements CashAdvanceSettlement[]
+
+  @@unique([companyId, number])
+  @@index([companyId, status])
+}
+
+model CashAdvanceSettlement {
+  id            String      @id @default(cuid())
+  cashAdvanceId String
+  cashAdvance   CashAdvance @relation(fields: [cashAdvanceId], references: [id], onDelete: Cascade)
+  amount        Decimal     @db.Decimal(19, 4)
+  date          DateTime    @db.Date
+  notes         String?
+  createdAt     DateTime    @default(now())
+
+  @@index([cashAdvanceId])
+}
+
+model CreditCard {
+  id        String   @id @default(cuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  name      String
+  last4     String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  transactions CreditCardTransaction[]
+
+  @@index([companyId])
+}
+
+model CreditCardTransaction {
+  id           String       @id @default(cuid())
+  companyId    String
+  creditCardId String
+  creditCard   CreditCard   @relation(fields: [creditCardId], references: [id], onDelete: Restrict)
+  date         DateTime     @db.Date
+  description  String
+  amount       Decimal      @db.Decimal(19, 4)
+  category     String?
+  kind         String
+  status       RecordStatus @default(POSTED)
+  notes        String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@index([companyId, date])
+  @@index([creditCardId])
+}
+
+model Employee {
+  id          String         @id @default(cuid())
+  companyId   String
+  company     Company        @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  employeeNo  String
+  name        String
+  position    String?
+  phone       String?
+  email       String?
+  joiningDate DateTime?      @db.Date
+  salary      Decimal        @db.Decimal(19, 4)
+  status      EmployeeStatus @default(ACTIVE)
+  notes       String?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  payrolls Payroll[]
+  assets   Asset[]   @relation("EmployeeAssets")
+
+  @@unique([companyId, employeeNo])
+  @@index([companyId, status])
+}
+
+model Payroll {
+  id          String   @id @default(cuid())
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  employeeId  String
+  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  periodStart DateTime @db.Date
+  periodEnd   DateTime @db.Date
+  salary      Decimal  @db.Decimal(19, 4)
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  allocations PayrollAllocation[]
+
+  @@index([companyId, periodStart])
+  @@index([employeeId])
+}
+
+model PayrollAllocation {
+  id         String   @id @default(cuid())
+  payrollId  String
+  payroll    Payroll  @relation(fields: [payrollId], references: [id], onDelete: Cascade)
+  projectId  String?
+  project    Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  amount     Decimal  @db.Decimal(19, 4)
+  isOperating Boolean @default(false)
+  notes      String?
+
+  @@index([payrollId])
+  @@index([projectId])
+}
+
+model Asset {
+  id            String        @id @default(cuid())
+  companyId     String
+  company       Company       @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  name          String
+  category      AssetCategory
+  purchaseDate  DateTime?     @db.Date
+  purchaseValue Decimal       @db.Decimal(19, 4)
+  currentValue  Decimal       @db.Decimal(19, 4)
+  status        AssetStatus   @default(ACTIVE)
+  assignedUserId String?
+  assignedUser  User?         @relation("AssetAssignee", fields: [assignedUserId], references: [id], onDelete: SetNull)
+  employeeId    String?
+  employee      Employee?     @relation("EmployeeAssets", fields: [employeeId], references: [id], onDelete: SetNull)
+  notes         String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([companyId, category])
+  @@index([companyId, status])
+}
+
+model Obligation {
+  id              String               @id @default(cuid())
+  companyId       String
+  company         Company              @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  name            String
+  category        ObligationCategory
+  amount          Decimal              @db.Decimal(19, 4)
+  frequency       ObligationFrequency
+  dueDate         DateTime             @db.Date
+  nextDueDate     DateTime             @db.Date
+  reminderDays    Int                  @default(7)
+  status          ObligationStatus     @default(ACTIVE)
+  notes           String?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  @@index([companyId, status])
+  @@index([companyId, nextDueDate])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  companyId String
+  company   Company          @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  userId    String?
+  user      User?            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType
+  title     String
+  body      String
+  recordId  String?
+  module    String?
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  @@index([companyId, readAt])
+  @@index([userId, readAt])
+}
+
+model UserNotificationPreference {
+  id                    String  @id @default(cuid())
+  companyId             String
+  company               Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  userId                String  @unique
+  user                  User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  upcomingObligation    Boolean @default(true)
+  overdueObligation     Boolean @default(true)
+  lowBalance            Boolean @default(true)
+  openCashAdvance       Boolean @default(true)
+  projectPaymentDue     Boolean @default(true)
+  systemActivity        Boolean @default(true)
+
+  @@index([companyId])
+}
+
+model Attachment {
+  id         String               @id @default(cuid())
+  companyId  String
+  company    Company              @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  ownerType  AttachmentOwnerType
+  ownerId    String
+  fileName   String
+  mimeType   String
+  sizeBytes  Int
+  storageKey String
+  createdAt  DateTime             @default(now())
+
+  @@index([companyId, ownerType, ownerId])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String
+  module    String
+  recordId  String?
+  oldValue  Json?
+  newValue  Json?
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  @@index([companyId, createdAt])
+  @@index([companyId, module])
+  @@index([userId])
+}
+
+model SubscriptionPlan {
+  id           String         @id @default(cuid())
+  code         String         @unique
+  name         String
+  monthlyPrice Decimal        @default(0) @db.Decimal(19, 4)
+  maxUsers     Int?
+  maxProjects  Int?
+  isActive     Boolean        @default(true)
+  subscriptions Subscription[]
+}
+
+model Subscription {
+  id               String             @id @default(cuid())
+  companyId        String             @unique
+  company          Company            @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  planId           String
+  plan             SubscriptionPlan   @relation(fields: [planId], references: [id], onDelete: Restrict)
+  status           SubscriptionStatus @default(TRIAL)
+  trialEndsAt      DateTime?
+  currentPeriodEnd DateTime?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+}

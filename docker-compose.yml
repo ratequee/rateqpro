@@ -1,0 +1,21 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: rateq-pro-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: rateq
+      POSTGRES_PASSWORD: rateq
+      POSTGRES_DB: rateq_pro
+    ports:
+      - "5433:5432"
+    volumes:
+      - rateq_pro_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rateq -d rateq_pro"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  rateq_pro_pg:

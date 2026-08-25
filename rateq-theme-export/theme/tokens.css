@@ -1,0 +1,63 @@
+/* RateQ design tokens — copy into your global CSS */
+
+:root {
+  /* HSL components used as hsl(var(--token)) */
+  --background: 0 0% 100%;
+  --foreground: 0 0% 22%;
+  --brand: 351 71% 24%;
+  --gold: 42 78% 68%;
+  --surface: 0 0% 100%;
+  --surface-muted: 210 20% 98%;
+  --border: 214 32% 91%;
+
+  --font-nunito: 'Nunito', system-ui, sans-serif;
+  --font-noto-arabic: 'Noto Sans Arabic', system-ui, sans-serif;
+}
+
+.dark {
+  --background: 0 0% 20%;
+  --foreground: 0 0% 96%;
+  --surface: 0 0% 22%;
+  --surface-muted: 0 0% 25%;
+  --border: 0 0% 29%;
+}
+
+/* Hex equivalents of the Tailwind preset */
+:root {
+  --rq-brand-50: #fdf2f3;
+  --rq-brand-100: #fce4e7;
+  --rq-brand-200: #f9c8cf;
+  --rq-brand-300: #f3a0ac;
+  --rq-brand-400: #e86b7e;
+  --rq-brand-500: #8e2157;
+  --rq-brand-600: #5a0f1c;
+  --rq-brand-700: #4a0c17;
+  --rq-brand-800: #3a0912;
+  --rq-brand-900: #2a060d;
+
+  --rq-gold-50: #fdf8ef;
+  --rq-gold-100: #faefd9;
+  --rq-gold-200: #f5ddb3;
+  --rq-gold-300: #edc56f;
+  --rq-gold-400: #e8b84d;
+  --rq-gold-500: #d4a017;
+  --rq-gold-600: #b8860b;
+
+  --rq-ink: #373737;
+  --rq-ink-muted: #6b7280;
+  --rq-ink-light: #9ca3af;
+
+  --rq-page-bg: #f4f5f7;
+  --rq-max-width: 1172px;
+
+  --rq-shadow-card: 0 4px 24px rgba(0, 0, 0, 0.06);
+  --rq-shadow-hero: 0 8px 40px rgba(107, 18, 33, 0.08);
+}
+
+.dark {
+  --rq-dm-bg: #323232;
+  --rq-dm-surface: #383838;
+  --rq-dm-elevated: #404040;
+  --rq-dm-hover: #454545;
+  --rq-dm-border: #4a4a4a;
+}

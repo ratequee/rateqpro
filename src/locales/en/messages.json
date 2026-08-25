@@ -1,0 +1,356 @@
+{
+  "metadata": {
+    "title": "RateQ Pro",
+    "description": "A premium financial control center for business owners."
+  },
+  "common": {
+    "appName": "RateQ Pro",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "add": "Add",
+    "search": "Search",
+    "filter": "Filter",
+    "export": "Export",
+    "close": "Close",
+    "confirm": "Confirm",
+    "back": "Back",
+    "loading": "Loading…",
+    "retry": "Try again",
+    "viewAll": "View all",
+    "comingInLaterMilestone": "This module is connected to the application shell. Data entry will be enabled in the next development milestone.",
+    "genericError": "An error occurred. Please try again.",
+    "language": "Language",
+    "theme": "Theme",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System",
+    "english": "English",
+    "arabic": "Arabic",
+    "signedInAs": "Signed in as",
+    "signOut": "Sign out",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
+    "notifications": "Notifications",
+    "noResults": "No results found.",
+    "currency": "Currency"
+  },
+  "auth": {
+    "title": "Sign in to RateQ Pro",
+    "subtitle": "Business administration and financial management",
+    "email": "Email",
+    "password": "Password",
+    "submit": "Sign in",
+    "submitting": "Signing in…",
+    "invalidCredentials": "The email or password is incorrect.",
+    "rateLimited": "Too many sign-in attempts. Please wait a few minutes and try again.",
+    "inactive": "This account is not active. Contact your administrator.",
+    "error": "An error occurred while signing in. Please try again.",
+    "emailPlaceholder": "you@company.com"
+  },
+  "nav": {
+    "overview": "Overview",
+    "finance": "Finance",
+    "operations": "Operations",
+    "people": "People",
+    "workspace": "Workspace",
+    "system": "System",
+    "dashboard": "Dashboard",
+    "transactions": "Bank Transactions",
+    "projects": "Projects",
+    "contracts": "Contracts",
+    "projectExpenses": "Project Expenses",
+    "operatingExpenses": "Operating Expenses",
+    "cashAdvances": "Cash Advances",
+    "creditCards": "Credit Cards",
+    "employees": "Employees",
+    "payroll": "Payroll",
+    "assets": "Assets",
+    "cashFlow": "Cash Flow",
+    "obligations": "Monthly Obligations",
+    "reports": "Reports",
+    "notifications": "Notifications",
+    "users": "Users",
+    "roles": "Roles & Permissions",
+    "settings": "Settings",
+    "auditLog": "Audit Log"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "subtitle": "Your financial control center",
+    "bankBalance": "Current Bank Balance",
+    "totalRevenue": "Total Revenue",
+    "totalExpenses": "Total Expenses",
+    "netProfit": "Net Profit",
+    "expectedProfit": "Expected Profit",
+    "monthlyObligations": "Monthly Obligations",
+    "cashPosition": "Current Cash Position",
+    "projects": "Projects",
+    "totalProjects": "Total Projects",
+    "activeProjects": "Active Projects",
+    "completedProjects": "Completed Projects",
+    "totalContracts": "Total Contracts",
+    "cashFlow": "Cash Flow",
+    "currentCash": "Current Cash",
+    "expectedIncome": "Expected Income",
+    "expectedExpenses": "Expected Expenses",
+    "forecast": "Forecast",
+    "alerts": "Alerts",
+    "noAlerts": "No alerts right now.",
+    "emptyHint": "Add bank transactions and projects to see live financial position.",
+    "recent": "Recent transactions",
+    "viewTransactions": "View transactions",
+    "lowCash": "Cash balance is below {threshold}. Review upcoming payments.",
+    "upcomingObligations": "Upcoming obligations in the next 7 days: {count}",
+    "overdueObligations": "Overdue obligations: {count}"
+  },
+  "empty": {
+    "projects": {
+      "title": "No projects yet.",
+      "description": "Projects will appear here once they are added."
+    },
+    "transactions": {
+      "title": "No bank transactions yet.",
+      "description": "Bank movements will appear here once they are recorded."
+    },
+    "contracts": {
+      "title": "No contracts yet.",
+      "description": "Contracts linked to projects will appear here."
+    },
+    "projectExpenses": {
+      "title": "No project expenses yet.",
+      "description": "Project costs will appear here once they are recorded."
+    },
+    "operatingExpenses": {
+      "title": "No operating expenses yet.",
+      "description": "Rent, salaries, and other operating costs will appear here."
+    },
+    "cashAdvances": {
+      "title": "No cash advances yet.",
+      "description": "Issued advances will appear here."
+    },
+    "creditCards": {
+      "title": "No credit cards yet.",
+      "description": "Company cards and purchases will appear here."
+    },
+    "employees": {
+      "title": "No employees yet.",
+      "description": "Employee records will appear here."
+    },
+    "payroll": {
+      "title": "No payroll records yet.",
+      "description": "Salary allocations will appear here."
+    },
+    "assets": {
+      "title": "No assets yet.",
+      "description": "Vehicles, equipment, and other assets will appear here."
+    },
+    "cashFlow": {
+      "title": "No cash flow data yet.",
+      "description": "Actual and forecast cash movement will appear here once transactions exist."
+    },
+    "obligations": {
+      "title": "No monthly obligations yet.",
+      "description": "Salaries, rent, and other recurring payments will appear here."
+    },
+    "reports": {
+      "title": "No reports to show yet.",
+      "description": "Reports become available after financial records are added."
+    },
+    "notifications": {
+      "title": "No notifications yet.",
+      "description": "Reminders and system activity will appear here."
+    },
+    "users": {
+      "title": "No users yet.",
+      "description": "Team members will appear here."
+    },
+    "roles": {
+      "title": "Roles are ready.",
+      "description": "Super Admin, Admin, Manager, and Employee are configured."
+    },
+    "auditLog": {
+      "title": "No audit activity yet.",
+      "description": "Changes to financial and system records will appear here."
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "subtitle": "Company, appearance, and workspace preferences",
+    "general": "General",
+    "appearance": "Appearance",
+    "notifications": "Notifications",
+    "companyName": "Company Name",
+    "contact": "Contact Information",
+    "currency": "Currency",
+    "dateFormat": "Date Format",
+    "languageHint": "Arabic uses a full right-to-left layout.",
+    "themeHint": "Dark mode is designed for long financial work sessions.",
+    "saved": "Settings saved.",
+    "saveError": "An error occurred while saving settings. Please try again.",
+    "demoBadge": "Demo data"
+  },
+  "users": {
+    "title": "Users",
+    "subtitle": "People who can access this company workspace",
+    "role": "Role",
+    "status": "Status",
+    "email": "Email",
+    "name": "Name",
+    "roles": {
+      "SUPER_ADMIN": "Super Admin",
+      "ADMIN": "Admin",
+      "MANAGER": "Manager",
+      "EMPLOYEE": "Employee"
+    },
+    "statuses": {
+      "ACTIVE": "Active",
+      "INACTIVE": "Inactive",
+      "SUSPENDED": "Suspended"
+    }
+  },
+  "rolesPage": {
+    "title": "Roles & Permissions",
+    "subtitle": "Access is enforced on the server. Pages never hardcode permission checks independently.",
+    "role": "Role",
+    "permissions": "Permissions",
+    "view": "View",
+    "create": "Create",
+    "edit": "Edit",
+    "delete": "Delete",
+    "export": "Export",
+    "approve": "Approve"
+  },
+  "module": {
+    "transactions": {
+      "title": "Bank Transactions",
+      "subtitle": "The central financial ledger and source of truth for cash movement."
+    },
+    "projects": {
+      "title": "Projects",
+      "subtitle": "Track delivery, contract value, costs, and expected profit."
+    },
+    "contracts": {
+      "title": "Contracts",
+      "subtitle": "Contracts are always linked to a project."
+    },
+    "projectExpenses": {
+      "title": "Project Expenses",
+      "subtitle": "Materials, subcontractors, labor, equipment, transportation, and other project costs."
+    },
+    "operatingExpenses": {
+      "title": "Operating Expenses",
+      "subtitle": "Rent, salaries, vehicles, utilities, marketing, and other operating costs."
+    },
+    "cashAdvances": {
+      "title": "Cash Advances",
+      "subtitle": "Track amounts issued, spent, remaining, and settlement status."
+    },
+    "creditCards": {
+      "title": "Credit Cards",
+      "subtitle": "Company cards, purchases, and payments."
+    },
+    "employees": {
+      "title": "Employees",
+      "subtitle": "People, positions, and salary records."
+    },
+    "payroll": {
+      "title": "Payroll",
+      "subtitle": "Allocate salaries to projects or operating expenses without exceeding the salary amount."
+    },
+    "assets": {
+      "title": "Assets",
+      "subtitle": "Vehicles, equipment, furniture, devices, and other company assets."
+    },
+    "cashFlow": {
+      "title": "Cash Flow",
+      "subtitle": "Separate actual cash movement from 3, 6, and 12 month forecasts."
+    },
+    "obligations": {
+      "title": "Monthly Obligations",
+      "subtitle": "Upcoming salaries, rent, housing, vehicles, subscriptions, and other commitments."
+    },
+    "reports": {
+      "title": "Reports",
+      "subtitle": "Profit & loss, expenses, cash flow, advances, and bank activity."
+    },
+    "notifications": {
+      "title": "Notifications",
+      "subtitle": "Reminders, overdue items, and system activity."
+    },
+    "auditLog": {
+      "title": "Audit Log",
+      "subtitle": "A complete trail of who changed financial and system records."
+    }
+  },
+  "transactions": {
+    "title": "Bank Transactions",
+    "subtitle": "The central financial ledger. Posted movements update the dashboard immediately.",
+    "formSubtitle": "Record a deposit or withdrawal. This becomes part of the company financial position.",
+    "add": "Add Transaction",
+    "edit": "Edit Transaction",
+    "reference": "Transaction ID",
+    "date": "Date",
+    "type": "Type",
+    "deposit": "Deposit",
+    "withdrawal": "Withdrawal",
+    "description": "Description",
+    "amount": "Amount",
+    "project": "Project",
+    "category": "Category",
+    "attachment": "Attachment",
+    "notes": "Notes",
+    "createdBy": "Created By",
+    "createdAt": "Created At",
+    "updatedAt": "Updated At",
+    "status": "Status",
+    "bankAccount": "Bank Account",
+    "noProject": "No project",
+    "allProjects": "All projects",
+    "allTypes": "All types",
+    "allStatuses": "All statuses",
+    "searchPlaceholder": "Search description or ID",
+    "from": "From",
+    "to": "To",
+    "void": "Void",
+    "reverse": "Reverse",
+    "voidTitle": "Void this transaction?",
+    "voidBody": "The record stays in the ledger but will no longer affect balances, reports, or the dashboard.",
+    "reverseTitle": "Reverse this transaction?",
+    "reverseBody": "The original will be marked reversed and an opposite posted movement will be created.",
+    "totalDeposits": "Deposits",
+    "totalWithdrawals": "Withdrawals",
+    "netMovement": "Net movement",
+    "previous": "Previous",
+    "next": "Next",
+    "noAttachments": "No attachments.",
+    "statuses": {
+      "POSTED": "Posted",
+      "VOIDED": "Voided",
+      "REVERSED": "Reversed"
+    },
+    "categories": {
+      "project_payment": "Project payment",
+      "other_income": "Other income",
+      "materials": "Materials",
+      "subcontractors": "Subcontractors",
+      "labor": "Labor",
+      "equipment": "Equipment",
+      "transportation": "Transportation",
+      "rent": "Rent",
+      "salaries": "Salaries",
+      "vehicles": "Vehicles",
+      "electricity": "Electricity",
+      "internet": "Internet",
+      "marketing": "Marketing",
+      "other": "Other"
+    },
+    "errors": {
+      "validation": "Please check the form and try again.",
+      "save": "An error occurred while saving the transaction. Please try again.",
+      "storage": "File storage is not configured. The transaction was not saved. Add Supabase keys, or save without an attachment.",
+      "immutable": "Voided or reversed transactions cannot be changed."
+    }
+  }
+}
