@@ -53,28 +53,46 @@ npm run dev
 
 ## Deploy (Vercel + Supabase)
 
-1. Create a project at [supabase.com](https://supabase.com).
-2. Copy the variables from the table above. Add `sslmode=require` on both Postgres URLs, and `pgbouncer=true` on `DATABASE_URL`.
-3. Run the schema and demo data once from your machine (uses `DIRECT_URL`):
+This folder is not a git repo yet. Vercel deploys from GitHub (or GitLab / Bitbucket).
+
+### 1. Put the project on GitHub
 
 ```bash
-npx prisma migrate deploy
-npm run db:seed
+git init
+git add .
+git commit -m "Initial RateQ Pro"
 ```
 
-4. Optional: run `supabase/storage.sql` in the Supabase SQL editor. The app can also create the private `attachments` bucket on first upload.
-5. Import the GitHub repo into Vercel and set:
+Create an empty GitHub repository, then:
+
+```bash
+git remote add origin https://github.com/YOUR_USER/YOUR_REPO.git
+git branch -M main
+git push -u origin main
+```
+
+Do not commit `.env`. It is already in `.gitignore`.
+
+### 2. Import the repo in Vercel
+
+1. Open [vercel.com/new](https://vercel.com/new) and import the GitHub repo.
+2. Framework preset: **Next.js**. Root directory: `.`
+3. Before the first deploy, add environment variables (Production + Preview):
 
 | Variable | Value |
 |---|---|
-| `DATABASE_URL` | Transaction pooler |
-| `DIRECT_URL` | Session pooler |
-| `AUTH_SECRET` | `openssl rand -base64 32` |
-| `APP_URL` | `https://your-app.vercel.app` |
-| `NEXT_PUBLIC_SUPABASE_URL` | Project URL |
+| `DATABASE_URL` | Same transaction pooler URI as local `.env` (port **6543**, `pgbouncer=true`) |
+| `DIRECT_URL` | Same session pooler URI as local `.env` (port **5432**) |
+| `AUTH_SECRET` | `openssl rand -base64 32` (use a new value for production) |
+| `APP_URL` | Your Vercel URL, e.g. `https://rateq-pro.vercel.app` |
+| `NEXT_PUBLIC_SUPABASE_URL` | `https://YOUR_REF.supabase.co` |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Publishable key |
 | `SUPABASE_SECRET_KEY` | Secret key |
 
-6. Deploy.
+If the database password contains `@`, `/`, `$`, or `!`, keep it URL-encoded in both Postgres URIs.
+
+4. Deploy. The build runs `prisma migrate deploy && next build`, so later schema changes apply on each production build.
+
+5. After the first deploy, set `APP_URL` to the real `*.vercel.app` URL (or your custom domain) and redeploy if you guessed it.
 
 The secret key stays on the server only. Attachment downloads go through `/api/attachments/[id]` after session and tenant checks.

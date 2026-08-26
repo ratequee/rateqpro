@@ -29,7 +29,7 @@ function SheetContent({
         {...props}
       >
         {children}
-        <SheetPrimitive.Close className="absolute end-4 top-4 rounded-sm opacity-70 hover:opacity-100">
+        <SheetPrimitive.Close className="absolute end-4 top-4 rounded-sm text-white/70 hover:text-white">
           <X className="size-4" />
           <span className="sr-only">×</span>
         </SheetPrimitive.Close>

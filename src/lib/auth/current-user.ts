@@ -40,11 +40,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
     },
   });
 
-  if (!session || session.expiresAt < new Date()) {
-    return null;
-  }
-
-  if (session.user.status !== "ACTIVE") {
+  if (!session || session.expiresAt < new Date() || session.user.status !== "ACTIVE") {
     return null;
   }
 

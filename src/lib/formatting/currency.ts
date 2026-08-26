@@ -75,3 +75,15 @@ export function formatMoney(
     maximumFractionDigits: 2,
   }).format(numeric);
 }
+
+export function formatAmount(
+  amount: string | number | bigint,
+  locale: string,
+  decimals = 0,
+): string {
+  const numeric = typeof amount === "bigint" ? filsToNumber(amount) : Number(amount);
+  return new Intl.NumberFormat(locale === "ar" ? "ar-QA" : "en-QA", {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  }).format(numeric);
+}

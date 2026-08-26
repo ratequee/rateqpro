@@ -8,6 +8,7 @@ import {
   calculateNetProfit,
   calculateOutstandingBalance,
   calculateRevenue,
+  calculateRunwayMonths,
   isCashAdvanceOverdue,
   isPayrollAllocationValid,
 } from "./calculations";
@@ -36,6 +37,11 @@ describe("financial calculations", () => {
 
   it("calculates net profit", () => {
     expect(filsToNumber(calculateNetProfit(ledger))).toBe(27000.5);
+  });
+
+  it("calculates runway months from cash vs monthly obligations", () => {
+    expect(calculateRunwayMonths(toFils("76399"), toFils("24555"))).toBeCloseTo(3.11, 1);
+    expect(calculateRunwayMonths(toFils("10000"), 0n)).toBeNull();
   });
 
   it("calculates outstanding project balance", () => {

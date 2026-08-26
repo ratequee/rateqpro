@@ -1,7 +1,7 @@
 "use client";
 
 import { Bell, LogOut, Menu, Moon, Sun } from "lucide-react";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { useTheme } from "next-themes";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -13,27 +13,32 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { usePathname, useRouter } from "@/i18n/navigation";
-import { routing, type AppLocale } from "@/i18n/routing";
+import { LanguageSwitch } from "@/components/ui/language-switch";
+import { InitialsAvatar } from "@/components/ui/initials-avatar";
+import { Link, usePathname } from "@/i18n/navigation";
 import { Sidebar } from "./sidebar";
+import { navTitleKey } from "./nav-config";
 import { logoutAction } from "@/features/auth/actions";
+import { getFirstName } from "@/lib/formatting/initials";
 import type { CurrentUser } from "@/lib/auth/current-user";
 
-export function AppHeader({ user }: { user: CurrentUser }) {
+export function AppHeader({
+  user,
+  alertCount = 0,
+}: {
+  user: CurrentUser;
+  alertCount?: number;
+}) {
   const t = useTranslations("common");
   const tNav = useTranslations("nav");
+  const tUsers = useTranslations("users");
   const { resolvedTheme, setTheme } = useTheme();
-  const locale = useLocale();
   const pathname = usePathname();
-  const router = useRouter();
   const [open, setOpen] = useState(false);
-
-  function switchLocale(next: AppLocale) {
-    router.replace(pathname, { locale: next });
-  }
+  const titleKey = navTitleKey(pathname);
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-card/95 px-4 backdrop-blur md:px-6">
+    <header className="sticky top-0 z-30 flex h-[54px] items-center justify-between border-b border-border bg-card px-5 shadow-[0_1px_0_var(--border)]">
       <div className="flex items-center gap-2">
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger asChild>
@@ -41,20 +46,24 @@ export function AppHeader({ user }: { user: CurrentUser }) {
               <Menu className="size-5" />
             </Button>
           </SheetTrigger>
-          <SheetContent side="start" className="p-0">
+          <SheetContent side="start" className="border-0 bg-transparent p-0">
             <SheetTitle className="sr-only">{tNav("dashboard")}</SheetTitle>
-            <Sidebar onNavigate={() => setOpen(false)} />
+            <Sidebar
+              user={user}
+              alertCount={alertCount}
+              onNavigate={() => setOpen(false)}
+            />
           </SheetContent>
         </Sheet>
-        <p className="hidden text-sm font-semibold text-muted-foreground sm:block">
-          {user.companyName}
-        </p>
+        <p className="text-[15px] font-bold">{tNav(titleKey)}</p>
       </div>
 
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-2">
+        <LanguageSwitch />
         <Button
-          variant="ghost"
+          variant="outline"
           size="icon"
+          className="size-[35px]"
           aria-label={t("theme")}
           onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
         >
@@ -62,30 +71,34 @@ export function AppHeader({ user }: { user: CurrentUser }) {
           <Moon className="hidden size-4 dark:block" />
         </Button>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm">
-              {locale === "ar" ? t("arabic") : t("english")}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {routing.locales.map((item) => (
-              <DropdownMenuItem key={item} onClick={() => switchLocale(item)}>
-                {item === "ar" ? t("arabic") : t("english")}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        <Button variant="ghost" size="icon" aria-label={t("notifications")}>
-          <Bell className="size-4" />
+        <Button
+          variant="outline"
+          size="icon"
+          className="relative size-[35px]"
+          aria-label={t("notifications")}
+          asChild
+        >
+          <Link href="/approvals">
+            <Bell className="size-4" />
+            {alertCount > 0 ? (
+              <span className="absolute -start-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full border-2 border-white bg-destructive text-[9px] font-bold text-white">
+                {alertCount}
+              </span>
+            ) : null}
+          </Link>
         </Button>
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="max-w-40 truncate">
-              {user.name}
-            </Button>
+            <button
+              type="button"
+              className="flex items-center gap-1.5 rounded-full border border-border bg-muted py-1 pe-2.5 ps-1 text-xs font-semibold"
+            >
+              <InitialsAvatar name={user.name} tone="solid" size="sm" />
+              <span className="hidden max-w-36 truncate sm:inline">
+                {getFirstName(user.name)} · {tUsers(`roles.${user.role}`)}
+              </span>
+            </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <div className="px-2 py-1.5 text-xs text-muted-foreground">

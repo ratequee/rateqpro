@@ -12,9 +12,9 @@ import { isTransactionCategory } from "@/lib/finance/categories";
 type Row = {
   id: string;
   reference: string;
-  date: Date;
+  date: string;
   type: "DEPOSIT" | "WITHDRAWAL";
-  amount: { toString(): string };
+  amount: string;
   description: string;
   category: string | null;
   status: "POSTED" | "VOIDED" | "REVERSED";
@@ -82,12 +82,12 @@ export function TransactionTable({
                 </td>
                 <td className="px-4 py-3">
                   {row.type === "DEPOSIT"
-                    ? formatMoney(row.amount.toString(), currencyCode, locale)
+                    ? formatMoney(row.amount, currencyCode, locale)
                     : "—"}
                 </td>
                 <td className="px-4 py-3">
                   {row.type === "WITHDRAWAL"
-                    ? formatMoney(row.amount.toString(), currencyCode, locale)
+                    ? formatMoney(row.amount, currencyCode, locale)
                     : "—"}
                 </td>
                 <td className="px-4 py-3">

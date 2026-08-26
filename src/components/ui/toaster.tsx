@@ -5,7 +5,7 @@ import { Toaster } from "sonner";
 export function AppToaster() {
   return (
     <Toaster
-      position="top-center"
+      position="bottom-right"
       richColors
       closeButton
       toastOptions={{

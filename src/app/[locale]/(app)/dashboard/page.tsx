@@ -1,31 +1,39 @@
 import { getLocale, getTranslations } from "next-intl/server";
+import { format } from "date-fns";
+import { ar, enUS } from "date-fns/locale";
+import { AlertTriangle, Bell, CheckCheck, LayoutDashboard } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { requireUser } from "@/lib/auth/guards";
-import { hasPermission } from "@/lib/permissions/check";
-import { getCompanyFinancialSnapshot } from "@/lib/finance/engine";
-import { formatMoney } from "@/lib/formatting/currency";
+import { getDashboardWorkspace } from "@/lib/finance/workspace";
+import { formatAmount } from "@/lib/formatting/currency";
 import { formatDate } from "@/lib/formatting/date";
 import { LOW_CASH_THRESHOLD } from "@/lib/finance/config";
 import { PageHeader } from "@/components/ui/page-header";
-import { StatCard } from "@/components/ui/stat-card";
-import { EmptyState } from "@/components/ui/empty-state";
+import { KpiCard } from "@/components/ui/kpi-card";
+import { RunwayBanner } from "@/components/ui/runway-banner";
+import { SectionCard } from "@/components/ui/section-card";
+import { InitialsAvatar } from "@/components/ui/initials-avatar";
 import { Button } from "@/components/ui/button";
 
 export default async function DashboardPage() {
   const user = await requireUser();
   const locale = await getLocale();
   const t = await getTranslations("dashboard");
-  const tTx = await getTranslations("transactions");
-  const snapshot = await getCompanyFinancialSnapshot(user.companyId);
-  const money = (value: bigint) =>
-    formatMoney(value, user.currencyCode, locale);
-  const canCreate = hasPermission(user.role, "transactions", "create");
+  const data = await getDashboardWorkspace(user.companyId);
+  const { snapshot } = data;
+  const amount = (value: bigint) => formatAmount(value, locale);
+  const runway =
+    data.runwayMonths === null ? "—" : data.runwayMonths.toFixed(1);
+
+  const today = format(new Date(), locale === "ar" ? "EEEE، d MMMM yyyy" : "EEEE, d MMMM yyyy", {
+    locale: locale === "ar" ? ar : enUS,
+  });
 
   const alerts: string[] = [];
   if (snapshot.alerts.lowCash) {
     alerts.push(
       t("lowCash", {
-        threshold: formatMoney(LOW_CASH_THRESHOLD, user.currencyCode, locale),
+        threshold: formatAmount(LOW_CASH_THRESHOLD, locale),
       }),
     );
   }
@@ -36,145 +44,114 @@ export default async function DashboardPage() {
     alerts.push(t("upcomingObligations", { count: snapshot.alerts.upcomingObligations }));
   }
 
+  const runwayMessage =
+    data.runwayMonths === null
+      ? t("runwayUnknown")
+      : data.runwayMonths < 4
+        ? t("runwayMessage", { months: runway })
+        : t("runwayHealthy", { months: runway });
+
   return (
-    <div>
+    <div className="flex flex-col gap-3.5">
       <PageHeader
         title={t("title")}
-        description={t("subtitle")}
-        actions={
-          canCreate ? (
-            <Button asChild>
-              <Link href="/transactions/new">{tTx("add")}</Link>
-            </Button>
-          ) : null
-        }
+        icon={LayoutDashboard}
+        meta={<span className="text-xs text-muted-foreground">{today}</span>}
       />
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label={t("bankBalance")} value={money(snapshot.bankBalance)} />
-        <StatCard label={t("totalRevenue")} value={money(snapshot.revenue)} />
-        <StatCard label={t("totalExpenses")} value={money(snapshot.expenses)} />
-        <StatCard label={t("netProfit")} value={money(snapshot.netProfit)} />
-        <StatCard label={t("expectedProfit")} value={money(snapshot.expectedProfit)} />
-        <StatCard
-          label={t("monthlyObligations")}
-          value={money(snapshot.monthlyObligations)}
+      <section className="grid grid-cols-2 gap-2.5 xl:grid-cols-4">
+        <KpiCard
+          href="/bank-accounts"
+          accent="brand"
+          label={t("totalLiquidity")}
+          value={amount(snapshot.bankBalance)}
+          hint={user.currencyCode}
         />
-        <StatCard label={t("cashPosition")} value={money(snapshot.cashPosition)} />
-        <StatCard label={t("forecast")} value={money(snapshot.forecast)} />
+        <KpiCard
+          href="/approvals"
+          accent="warning"
+          label={t("awaitingApproval")}
+          value={String(snapshot.alerts.overdueObligations)}
+          hint={t("pendingExpenses")}
+        />
+        <KpiCard
+          href="/projects"
+          accent="success"
+          label={t("activeProjects")}
+          value={String(snapshot.projects.active)}
+          hint={t("ofTotal", { total: snapshot.projects.total })}
+        />
+        <KpiCard
+          href="/clients"
+          accent="info"
+          label={t("totalClients")}
+          value={String(data.clientCount)}
+          hint={t("activeClients")}
+        />
       </section>
 
-      <section className="mt-8 grid gap-4 lg:grid-cols-2">
-        <div className="rounded-xl border border-border bg-card p-5 shadow-card">
-          <h2 className="mb-4 text-sm font-semibold text-muted-foreground">
-            {t("projects")}
-          </h2>
-          <div className="grid grid-cols-2 gap-4">
-            <StatCard
-              label={t("totalProjects")}
-              value={String(snapshot.projects.total)}
-              className="shadow-none"
-            />
-            <StatCard
-              label={t("activeProjects")}
-              value={String(snapshot.projects.active)}
-              className="shadow-none"
-            />
-            <StatCard
-              label={t("completedProjects")}
-              value={String(snapshot.projects.completed)}
-              className="shadow-none"
-            />
-            <StatCard
-              label={t("totalContracts")}
-              value={String(snapshot.projects.contracts)}
-              className="shadow-none"
-            />
-          </div>
-        </div>
+      <RunwayBanner
+        href="/cash-flow"
+        label={t("runway")}
+        months={runway}
+        unit={t("runwayUnit")}
+        message={runwayMessage}
+      />
 
-        <div className="rounded-xl border border-border bg-card p-5 shadow-card">
-          <h2 className="mb-4 text-sm font-semibold text-muted-foreground">
-            {t("cashFlow")}
-          </h2>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <StatCard
-              label={t("currentCash")}
-              value={money(snapshot.cashPosition)}
-              className="shadow-none"
-            />
-            <StatCard
-              label={t("expectedIncome")}
-              value={money(snapshot.expectedIncome)}
-              className="shadow-none"
-            />
-            <StatCard
-              label={t("expectedExpenses")}
-              value={money(snapshot.expectedExpenses)}
-              className="shadow-none"
-            />
-            <StatCard
-              label={t("forecast")}
-              value={money(snapshot.forecast)}
-              className="shadow-none"
-            />
-          </div>
-        </div>
-      </section>
+      <section className="grid gap-3.5 lg:grid-cols-2">
+        <SectionCard
+          title={t("recentExpenses")}
+          icon={CheckCheck}
+          action={
+            <Button variant="link" size="sm" className="h-auto p-0 text-[11.5px] text-primary" asChild>
+              <Link href="/transactions">{t("viewAll")}</Link>
+            </Button>
+          }
+        >
+          {data.recentWithdrawals.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{t("noRecent")}</p>
+          ) : (
+            data.recentWithdrawals.map((row) => (
+              <Link
+                key={row.id}
+                href={`/transactions/${row.id}`}
+                className="flex items-center gap-2.5 border-b border-muted py-2.5 last:border-0"
+              >
+                <InitialsAvatar name={row.createdBy.name} />
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-[13px] font-semibold">{row.description}</div>
+                  <div className="text-[11px] text-muted-foreground">
+                    {row.createdBy.name}
+                    {row.project ? ` · ${row.project.code}` : ""}
+                    {" · "}
+                    {formatDate(row.date, user.dateFormat, locale)}
+                  </div>
+                </div>
+                <span className="text-[13px] font-bold">
+                  {formatAmount(row.amount.toString(), locale)} {user.currencyCode}
+                </span>
+              </Link>
+            ))
+          )}
+        </SectionCard>
 
-      <section className="mt-8">
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <h2 className="text-sm font-semibold text-muted-foreground">{t("recent")}</h2>
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/transactions">{t("viewTransactions")}</Link>
-          </Button>
-        </div>
-        {snapshot.recent.length === 0 ? (
-          <EmptyState title={t("emptyHint")} />
-        ) : (
-          <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-card">
-            <table className="min-w-full text-start text-sm">
-              <tbody>
-                {snapshot.recent.map((row) => (
-                  <tr key={row.id} className="border-b border-border last:border-0">
-                    <td className="px-4 py-3 font-medium">
-                      <Link href={`/transactions/${row.id}`} className="hover:underline">
-                        {row.reference}
-                      </Link>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">
-                      {formatDate(row.date, user.dateFormat, locale)}
-                    </td>
-                    <td className="px-4 py-3">{row.description}</td>
-                    <td className="px-4 py-3">
-                      {row.type === "DEPOSIT" ? tTx("deposit") : tTx("withdrawal")}
-                    </td>
-                    <td className="px-4 py-3 font-medium">
-                      {formatMoney(row.amount.toString(), user.currencyCode, locale)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
-
-      <section className="mt-8">
-        <h2 className="mb-3 text-sm font-semibold text-muted-foreground">
-          {t("alerts")}
-        </h2>
-        {alerts.length === 0 ? (
-          <EmptyState title={t("noAlerts")} />
-        ) : (
-          <ul className="space-y-2 rounded-xl border border-border bg-card p-5 shadow-card">
-            {alerts.map((alert) => (
-              <li key={alert} className="text-sm">
-                {alert}
-              </li>
-            ))}
-          </ul>
-        )}
+        <SectionCard title={t("alerts")} icon={Bell}>
+          {alerts.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{t("noAlerts")}</p>
+          ) : (
+            alerts.map((alert) => (
+              <div
+                key={alert}
+                className="flex items-center gap-2.5 border-b border-muted py-2.5 last:border-0"
+              >
+                <div className="flex size-[34px] items-center justify-center rounded-full bg-er-bg text-destructive">
+                  <AlertTriangle className="size-4" />
+                </div>
+                <div className="text-[12.5px] font-semibold">{alert}</div>
+              </div>
+            ))
+          )}
+        </SectionCard>
       </section>
     </div>
   );

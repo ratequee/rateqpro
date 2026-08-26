@@ -15,7 +15,7 @@ function EmptyState({
   return (
     <div
       className={cn(
-        "flex flex-col items-start gap-2 rounded-xl border border-dashed border-border bg-card px-6 py-12",
+        "flex flex-col items-start gap-2 rounded-[13px] border border-dashed border-border bg-card px-6 py-12",
         className,
       )}
     >

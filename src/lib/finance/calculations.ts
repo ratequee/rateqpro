@@ -1,4 +1,4 @@
-import { addFils, subFils, toFils } from "@/lib/formatting/currency";
+import { addFils, filsToNumber, subFils, toFils } from "@/lib/formatting/currency";
 
 export type LedgerStatus = "POSTED" | "VOIDED" | "REVERSED";
 export type LedgerType = "DEPOSIT" | "WITHDRAWAL";
@@ -119,6 +119,16 @@ export function calculateMonthlyObligations(items: ObligationInput[]): bigint {
   return items
     .filter((item) => item.status === "ACTIVE")
     .reduce((total, item) => addFils(total, toFils(item.amount)), 0n);
+}
+
+export function calculateRunwayMonths(
+  balance: bigint,
+  monthlyObligations: bigint,
+): number | null {
+  if (monthlyObligations <= 0n) {
+    return null;
+  }
+  return filsToNumber(balance) / filsToNumber(monthlyObligations);
 }
 
 export function isPayrollAllocationValid(input: PayrollAllocationInput): boolean {

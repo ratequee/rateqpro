@@ -4,26 +4,30 @@ import { Slot } from "@radix-ui/react-slot";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-semibold disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 shrink-0 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+  "inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-lg text-[12.5px] font-semibold disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 shrink-0 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-brand-600",
-        gold:
-          "bg-gold-300 text-brand-700 hover:bg-gold-400",
+        default:
+          "bg-primary text-primary-foreground hover:bg-primary-deep hover:shadow-[0_4px_12px_rgba(142,33,87,0.3)]",
+        gold: "bg-gold-bright text-primary-deep hover:bg-white",
         outline:
-          "border border-input bg-card text-foreground hover:bg-muted",
-        secondary: "bg-secondary text-secondary-foreground hover:bg-gold-100",
+          "border border-input bg-card text-foreground hover:border-primary hover:text-primary",
+        secondary: "bg-secondary text-secondary-foreground hover:bg-brand-soft",
         ghost: "hover:bg-muted hover:text-foreground",
         destructive:
-          "bg-destructive text-destructive-foreground hover:opacity-90",
+          "border border-er-border bg-er-bg text-er-fg hover:bg-destructive hover:text-white",
+        success:
+          "border border-ok-border bg-ok-bg text-ok-fg hover:bg-success hover:text-white",
+        warning:
+          "border border-wn-border bg-wn-bg text-wn-fg hover:bg-warning hover:text-white",
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {
-        default: "h-10 px-4 py-2",
-        sm: "h-8 rounded-md px-3 text-xs",
-        lg: "h-11 rounded-md px-6",
-        icon: "size-10",
+        default: "h-9 px-[15px] py-2",
+        sm: "h-7 rounded-md px-2.5 text-[11px]",
+        lg: "h-11 rounded-lg px-6 text-[15px]",
+        icon: "size-9 rounded-lg",
       },
     },
     defaultVariants: {

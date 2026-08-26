@@ -1,5 +1,7 @@
-import { ModulePlaceholder } from "@/components/layout/module-placeholder";
+import { redirect } from "@/i18n/navigation";
+import { getLocale } from "next-intl/server";
 
-export default function CreditCardsPage() {
-  return <ModulePlaceholder moduleKey="creditCards" emptyKey="creditCards" />;
+export default async function CreditCardsRedirect() {
+  const locale = await getLocale();
+  redirect({ href: "/bank-accounts", locale });
 }

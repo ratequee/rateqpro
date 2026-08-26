@@ -1,5 +1,7 @@
-import { ModulePlaceholder } from "@/components/layout/module-placeholder";
+import { redirect } from "@/i18n/navigation";
+import { getLocale } from "next-intl/server";
 
-export default function PayrollPage() {
-  return <ModulePlaceholder moduleKey="payroll" emptyKey="payroll" />;
+export default async function PayrollRedirect() {
+  const locale = await getLocale();
+  redirect({ href: "/employees", locale });
 }

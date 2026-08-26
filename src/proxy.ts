@@ -2,6 +2,7 @@ import createMiddleware from "next-intl/middleware";
 import { NextRequest, NextResponse } from "next/server";
 import { routing } from "./i18n/routing";
 import { SESSION_COOKIE } from "./lib/auth/constants";
+import { isValidSessionToken } from "./lib/auth/session";
 
 const intlMiddleware = createMiddleware(routing);
 
@@ -27,23 +28,38 @@ function getLocaleFromPath(pathname: string): string {
   return routing.defaultLocale;
 }
 
-export default function proxy(request: NextRequest) {
+function clearSessionCookie(response: NextResponse) {
+  response.cookies.set(SESSION_COOKIE, "", {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 0,
+  });
+}
+
+export default async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const stripped = pathnameWithoutLocale(pathname);
   const isPublic = publicPathnames.some(
     (path) => stripped === path || stripped.startsWith(`${path}/`),
   );
-  const hasSession = Boolean(request.cookies.get(SESSION_COOKIE)?.value);
+  const token = request.cookies.get(SESSION_COOKIE)?.value;
   const locale = getLocaleFromPath(pathname);
+
+  let hasSession = Boolean(token);
+  if (token && !isPublic) {
+    hasSession = await isValidSessionToken(token);
+  }
 
   if (!isPublic && !hasSession) {
     const loginUrl = new URL(`/${locale}/login`, request.url);
     loginUrl.searchParams.set("next", stripped === "/" ? "/dashboard" : stripped);
-    return NextResponse.redirect(loginUrl);
-  }
-
-  if (stripped === "/login" && hasSession) {
-    return NextResponse.redirect(new URL(`/${locale}/dashboard`, request.url));
+    const response = NextResponse.redirect(loginUrl);
+    if (token) {
+      clearSessionCookie(response);
+    }
+    return response;
   }
 
   return intlMiddleware(request);

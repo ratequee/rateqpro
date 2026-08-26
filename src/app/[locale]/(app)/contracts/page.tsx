@@ -1,5 +1,7 @@
-import { ModulePlaceholder } from "@/components/layout/module-placeholder";
+import { redirect } from "@/i18n/navigation";
+import { getLocale } from "next-intl/server";
 
-export default function ContractsPage() {
-  return <ModulePlaceholder moduleKey="contracts" emptyKey="contracts" />;
+export default async function ContractsRedirect() {
+  const locale = await getLocale();
+  redirect({ href: "/projects", locale });
 }

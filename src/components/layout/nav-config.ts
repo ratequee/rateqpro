@@ -1,97 +1,109 @@
 import {
   LayoutDashboard,
-  ArrowLeftRight,
-  FolderKanban,
-  FileText,
-  HardHat,
-  Building2,
-  Wallet,
-  CreditCard,
-  Users,
-  Banknote,
-  Boxes,
+  CheckCheck,
+  Landmark,
+  FileSpreadsheet,
+  Receipt,
+  ListChecks,
   TrendingUp,
-  CalendarClock,
+  Calculator,
+  Contact,
+  ClipboardList,
+  Users,
+  Files,
+  Package,
   PieChart,
-  Bell,
-  Shield,
   Settings,
-  ScrollText,
-  UserCog,
   type LucideIcon,
 } from "lucide-react";
 
+export type NavItemKey =
+  | "dashboard"
+  | "approvals"
+  | "bankAccounts"
+  | "bankReader"
+  | "expenses"
+  | "obligations"
+  | "cashFlow"
+  | "tax"
+  | "clients"
+  | "projects"
+  | "employees"
+  | "documents"
+  | "assets"
+  | "reports"
+  | "settings";
+
 export type NavItem = {
   href: string;
-  key:
-    | "dashboard"
-    | "transactions"
-    | "projects"
-    | "contracts"
-    | "projectExpenses"
-    | "operatingExpenses"
-    | "cashAdvances"
-    | "creditCards"
-    | "employees"
-    | "payroll"
-    | "assets"
-    | "cashFlow"
-    | "obligations"
-    | "reports"
-    | "notifications"
-    | "users"
-    | "roles"
-    | "settings"
-    | "auditLog";
+  key: NavItemKey;
   icon: LucideIcon;
+  badge?: boolean;
 };
 
 export type NavGroup = {
-  key: "overview" | "finance" | "operations" | "people" | "system";
+  key: "main" | "finance" | "business" | "reportsSection";
   items: NavItem[];
 };
 
 export const navigation: NavGroup[] = [
   {
-    key: "overview",
-    items: [{ href: "/dashboard", key: "dashboard", icon: LayoutDashboard }],
+    key: "main",
+    items: [
+      { href: "/dashboard", key: "dashboard", icon: LayoutDashboard },
+      { href: "/approvals", key: "approvals", icon: CheckCheck, badge: true },
+    ],
   },
   {
     key: "finance",
     items: [
-      { href: "/transactions", key: "transactions", icon: ArrowLeftRight },
+      { href: "/bank-accounts", key: "bankAccounts", icon: Landmark },
+      { href: "/bank-reader", key: "bankReader", icon: FileSpreadsheet },
+      { href: "/transactions", key: "expenses", icon: Receipt },
+      { href: "/obligations", key: "obligations", icon: ListChecks },
       { href: "/cash-flow", key: "cashFlow", icon: TrendingUp },
-      { href: "/obligations", key: "obligations", icon: CalendarClock },
-      { href: "/reports", key: "reports", icon: PieChart },
+      { href: "/tax", key: "tax", icon: Calculator },
     ],
   },
   {
-    key: "operations",
+    key: "business",
     items: [
-      { href: "/projects", key: "projects", icon: FolderKanban },
-      { href: "/contracts", key: "contracts", icon: FileText },
-      { href: "/project-expenses", key: "projectExpenses", icon: HardHat },
-      { href: "/operating-expenses", key: "operatingExpenses", icon: Building2 },
-      { href: "/credit-cards", key: "creditCards", icon: CreditCard },
-    ],
-  },
-  {
-    key: "people",
-    items: [
+      { href: "/clients", key: "clients", icon: Contact },
+      { href: "/projects", key: "projects", icon: ClipboardList },
       { href: "/employees", key: "employees", icon: Users },
-      { href: "/payroll", key: "payroll", icon: Banknote },
-      { href: "/cash-advances", key: "cashAdvances", icon: Wallet },
-      { href: "/assets", key: "assets", icon: Boxes },
+      { href: "/documents", key: "documents", icon: Files },
+      { href: "/assets", key: "assets", icon: Package },
     ],
   },
   {
-    key: "system",
+    key: "reportsSection",
     items: [
-      { href: "/notifications", key: "notifications", icon: Bell },
-      { href: "/users", key: "users", icon: UserCog },
-      { href: "/roles", key: "roles", icon: Shield },
-      { href: "/audit-log", key: "auditLog", icon: ScrollText },
+      { href: "/reports", key: "reports", icon: PieChart },
       { href: "/settings", key: "settings", icon: Settings },
     ],
   },
 ];
+
+const extraTitles: Array<{ href: string; key: NavItemKey }> = [
+  { href: "/notifications", key: "approvals" },
+  { href: "/credit-cards", key: "bankAccounts" },
+  { href: "/contracts", key: "projects" },
+  { href: "/payroll", key: "employees" },
+  { href: "/cash-advances", key: "assets" },
+  { href: "/users", key: "settings" },
+  { href: "/roles", key: "settings" },
+  { href: "/audit-log", key: "settings" },
+];
+
+export function navTitleKey(pathname: string): NavItemKey {
+  const items = [
+    ...navigation.flatMap((group) => group.items),
+    ...extraTitles,
+  ];
+  const match = items
+    .filter(
+      (item) => pathname === item.href || pathname.startsWith(`${item.href}/`),
+    )
+    .sort((a, b) => b.href.length - a.href.length)[0];
+  return match?.key ?? "dashboard";
+}

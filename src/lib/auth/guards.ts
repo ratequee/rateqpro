@@ -1,4 +1,5 @@
 import { getLocale } from "next-intl/server";
+import { redirect as nextRedirect } from "next/navigation";
 import { redirect } from "@/i18n/navigation";
 import { getCurrentUser, type CurrentUser } from "./current-user";
 import type { PermissionAction, PermissionModule } from "@/lib/permissions/catalog";
@@ -8,8 +9,7 @@ export async function requireUser(): Promise<CurrentUser> {
   const user = await getCurrentUser();
   if (!user) {
     const locale = await getLocale();
-    redirect({ href: "/login", locale });
-    throw new Error("UNAUTHENTICATED");
+    nextRedirect(`/${locale}/login`);
   }
   return user;
 }

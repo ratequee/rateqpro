@@ -102,7 +102,18 @@ export async function listTransactions(query: TransactionListQuery) {
   }));
 
   return {
-    rows,
+    rows: rows.map((row) => ({
+      id: row.id,
+      reference: row.reference,
+      date: row.date.toISOString(),
+      type: row.type,
+      amount: row.amount.toString(),
+      description: row.description,
+      category: row.category,
+      status: row.status,
+      project: row.project,
+      createdBy: { name: row.createdBy.name },
+    })),
     total,
     page,
     pageCount: Math.max(1, Math.ceil(total / TRANSACTION_PAGE_SIZE)),

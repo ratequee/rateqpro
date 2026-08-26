@@ -4,10 +4,11 @@ import { requirePermission } from "@/lib/auth/guards";
 import { hasPermission } from "@/lib/permissions/check";
 import { formatMoney } from "@/lib/formatting/currency";
 import { listCompanyProjects, listTransactions } from "@/services/transactions";
+import { Receipt } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { StatCard } from "@/components/ui/stat-card";
+import { KpiCard } from "@/components/ui/kpi-card";
 import { PaginationLinks } from "@/components/ui/pagination-links";
 import { TransactionFilters } from "@/features/transactions/transaction-filters";
 import { TransactionTable } from "@/features/transactions/transaction-table";
@@ -73,10 +74,10 @@ export default async function TransactionsPage({
   }
 
   return (
-    <div>
+    <div className="flex flex-col gap-3.5">
       <PageHeader
         title={t("title")}
-        description={t("subtitle")}
+        icon={Receipt}
         actions={
           canCreate ? (
             <Button asChild>
@@ -96,10 +97,10 @@ export default async function TransactionsPage({
         projects={projects}
       />
 
-      <div className="mb-4 grid gap-3 sm:grid-cols-3">
-        <StatCard label={t("totalDeposits")} value={money(result.totals.deposits)} />
-        <StatCard label={t("totalWithdrawals")} value={money(result.totals.withdrawals)} />
-        <StatCard label={t("netMovement")} value={money(result.totals.net)} />
+      <div className="grid grid-cols-2 gap-2.5 xl:grid-cols-3">
+        <KpiCard accent="success" label={t("totalDeposits")} value={money(result.totals.deposits)} />
+        <KpiCard accent="danger" label={t("totalWithdrawals")} value={money(result.totals.withdrawals)} />
+        <KpiCard accent="brand" label={t("netMovement")} value={money(result.totals.net)} />
       </div>
 
       {result.rows.length === 0 ? (

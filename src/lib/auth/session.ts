@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { cookies } from "next/headers";
+import { connection } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { SESSION_COOKIE, SESSION_TTL_MS } from "./constants";
 
@@ -33,15 +34,19 @@ export async function createSession(input: {
   });
 
   const jar = await cookies();
-  jar.set(SESSION_COOKIE, token, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    expires: expiresAt,
-  });
+  jar.set(SESSION_COOKIE, token, sessionCookieOptions(expiresAt));
 
   return token;
+}
+
+function sessionCookieOptions(expires: Date) {
+  return {
+    httpOnly: true,
+    sameSite: "lax" as const,
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    expires,
+  };
 }
 
 export async function destroySession(): Promise<void> {
@@ -52,10 +57,25 @@ export async function destroySession(): Promise<void> {
       where: { tokenHash: hashToken(token) },
     });
   }
-  jar.delete(SESSION_COOKIE);
+  jar.set(SESSION_COOKIE, "", sessionCookieOptions(new Date(0)));
+}
+
+export async function isValidSessionToken(token: string): Promise<boolean> {
+  const session = await prisma.session.findUnique({
+    where: { tokenHash: hashToken(token) },
+    select: {
+      expiresAt: true,
+      user: { select: { status: true } },
+    },
+  });
+
+  return Boolean(
+    session && session.expiresAt > new Date() && session.user.status === "ACTIVE",
+  );
 }
 
 export async function getSessionToken(): Promise<string | null> {
+  await connection();
   const jar = await cookies();
   return jar.get(SESSION_COOKIE)?.value ?? null;
 }
