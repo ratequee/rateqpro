@@ -9,6 +9,7 @@ import { KpiCard } from "@/components/ui/kpi-card";
 import { StatusPill } from "@/components/ui/status-pill";
 import { InitialsAvatar } from "@/components/ui/initials-avatar";
 import { EmptyState } from "@/components/ui/empty-state";
+import { PayObligationButton, PauseObligationButton } from "@/features/obligations/obligation-form";
 
 export default async function ApprovalsPage() {
   const user = await requireUser();
@@ -16,7 +17,7 @@ export default async function ApprovalsPage() {
   const t = await getTranslations("approvals");
   const data = await getDashboardWorkspace(user.companyId);
   const overdue = data.obligationRows.filter(
-    (item) => item.nextDueDate < new Date(),
+    (item) => item.status === "ACTIVE" && item.nextDueDate < new Date(),
   );
   const total = overdue.reduce((sum, item) => sum + Number(item.amount.toString()), 0);
 
@@ -56,6 +57,10 @@ export default async function ApprovalsPage() {
                 </div>
                 <div className="text-[15px] font-bold">
                   {formatAmount(item.amount.toString(), locale)} {user.currencyCode}
+                </div>
+                <div className="flex shrink-0 gap-1.5">
+                  <PayObligationButton id={item.id} />
+                  <PauseObligationButton id={item.id} />
                 </div>
               </div>
             </div>

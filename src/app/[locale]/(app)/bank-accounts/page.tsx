@@ -5,9 +5,11 @@ import { getBankWorkspace } from "@/lib/finance/workspace";
 import { formatAmount } from "@/lib/formatting/currency";
 import { PageHeader } from "@/components/ui/page-header";
 import { KpiCard } from "@/components/ui/kpi-card";
-import { SectionCard } from "@/components/ui/section-card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { cn } from "@/lib/utils";
+import { BankAccountFormDialog, CreditCardFormDialog } from "@/features/bank-accounts/account-form";
+import { DeleteRecordButton } from "@/features/records/delete-button";
+import { deleteBankAccountAction, deleteCreditCardAction } from "@/features/bank-accounts/actions";
 
 const accountGradients = [
   "bg-linear-to-br from-primary-deep to-primary",
@@ -23,7 +25,16 @@ export default async function BankAccountsPage() {
 
   return (
     <div className="flex flex-col gap-3.5">
-      <PageHeader title={t("title")} icon={Landmark} />
+      <PageHeader
+        title={t("title")}
+        icon={Landmark}
+        actions={
+          <div className="flex gap-2">
+            <BankAccountFormDialog />
+            <CreditCardFormDialog />
+          </div>
+        }
+      />
       <section className="grid grid-cols-2 gap-2.5 xl:grid-cols-4">
         <KpiCard
           accent="brand"
@@ -63,10 +74,20 @@ export default async function BankAccountsPage() {
                 {account.isPrimary ? t("currentBalance") : t("balance")}
               </p>
               <p className="text-[26px] font-bold text-gold-bright">
-                {account.isPrimary
-                  ? `${formatAmount(snapshot.bankBalance, locale)} ${user.currencyCode}`
-                  : `0 ${user.currencyCode}`}
+                {formatAmount(account.balance, locale)} {user.currencyCode}
               </p>
+              <div className="relative z-10 mt-3 flex gap-1 rounded-lg bg-black/25 p-1">
+                <BankAccountFormDialog
+                  account={{
+                    id: account.id,
+                    name: account.name,
+                    bankName: account.bankName,
+                    accountNo: account.accountNo,
+                    isPrimary: account.isPrimary,
+                  }}
+                />
+                <DeleteRecordButton id={account.id} action={deleteBankAccountAction} />
+              </div>
             </div>
           ))}
           {cards.map((card) => (
@@ -83,15 +104,16 @@ export default async function BankAccountsPage() {
               </p>
               <p className="mt-3 text-[9.5px] text-white/50">{t("balance")}</p>
               <p className="text-[26px] font-bold text-gold-bright">—</p>
+              <div className="relative z-10 mt-3 flex gap-1 rounded-lg bg-black/25 p-1">
+                <CreditCardFormDialog
+                  card={{ id: card.id, name: card.name, last4: card.last4 }}
+                />
+                <DeleteRecordButton id={card.id} action={deleteCreditCardAction} />
+              </div>
             </div>
           ))}
         </div>
       )}
-      {cards.length > 0 ? (
-        <SectionCard title={t("cards")}>
-          <p className="text-sm text-muted-foreground">{cards.map((card) => card.name).join(" · ")}</p>
-        </SectionCard>
-      ) : null}
     </div>
   );
 }

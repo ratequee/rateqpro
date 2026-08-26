@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
@@ -8,6 +9,11 @@ export function AppearanceSettings() {
   const t = useTranslations("settings");
   const tCommon = useTranslations("common");
   const { theme, setTheme } = useTheme();
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    setReady(true);
+  }, []);
 
   return (
     <div className="flex items-center justify-between py-2.5">
@@ -21,7 +27,7 @@ export function AppearanceSettings() {
             key={value}
             type="button"
             size="sm"
-            variant={theme === value ? "default" : "outline"}
+            variant={ready && theme === value ? "default" : "outline"}
             onClick={() => setTheme(value)}
           >
             {tCommon(value)}

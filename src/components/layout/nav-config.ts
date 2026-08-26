@@ -89,6 +89,8 @@ const extraTitles: Array<{ href: string; key: NavItemKey }> = [
   { href: "/credit-cards", key: "bankAccounts" },
   { href: "/contracts", key: "projects" },
   { href: "/payroll", key: "employees" },
+  { href: "/operating-expenses", key: "expenses" },
+  { href: "/project-expenses", key: "expenses" },
   { href: "/cash-advances", key: "assets" },
   { href: "/users", key: "settings" },
   { href: "/roles", key: "settings" },

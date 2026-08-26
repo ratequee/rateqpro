@@ -34,7 +34,8 @@
     "closeMenu": "Close menu",
     "notifications": "Notifications",
     "noResults": "No results found.",
-    "currency": "Currency"
+    "currency": "Currency",
+    "deleteConfirm": "Delete this record? This cannot be undone."
   },
   "auth": {
     "title": "Sign in to RateQ Pro",
@@ -219,6 +220,10 @@
     "status": "Status",
     "email": "Email",
     "name": "Name",
+    "add": "Add user",
+    "password": "Password",
+    "passwordHint": "Leave blank to keep the current password.",
+    "passwordRequired": "Minimum 8 characters.",
     "roles": {
       "SUPER_ADMIN": "Super Admin",
       "ADMIN": "Admin",
@@ -382,7 +387,9 @@
     "totalAmount": "Total Amount",
     "empty": "Nothing is waiting for approval.",
     "overdue": "Overdue",
-    "due": "Due {date}"
+    "due": "Due {date}",
+    "pay": "Mark paid",
+    "pause": "Pause"
   },
   "bank": {
     "title": "Bank Accounts",
@@ -394,7 +401,15 @@
     "creditCard": "Credit Card",
     "currentBalance": "Current Balance",
     "balance": "Balance",
-    "empty": "No bank accounts yet."
+    "empty": "No bank accounts yet.",
+    "addAccount": "Add account",
+    "addCard": "Add card",
+    "accountName": "Account name",
+    "bankName": "Bank name",
+    "accountNo": "Account number",
+    "setPrimary": "Set as primary account",
+    "cardName": "Card name",
+    "last4": "Last 4 digits"
   },
   "bankReader": {
     "title": "Monthly Bank Statement Reader",
@@ -427,7 +442,13 @@
     "csvOnly": "CSV is supported in this version. Excel and PDF parsing will follow.",
     "selectFirst": "Select a bank first.",
     "unsupported": "Unsupported format. Use CSV for now.",
-    "reset": "New Statement"
+    "reset": "New Statement",
+    "import": "Import into RateQ Pro",
+    "importing": "Importing…",
+    "imported": "{count} transactions imported.",
+    "importInto": "Post to account",
+    "importError": "Import failed. Check dates and amounts.",
+    "needAccount": "Add a bank account before importing."
   },
   "tax": {
     "title": "Tax Calculator — Qatar Law",
@@ -479,7 +500,12 @@
     "details": "Details",
     "empty": "No clients yet.",
     "pending": "Pending",
-    "activeStatus": "Active"
+    "activeStatus": "Active",
+    "add": "Add client",
+    "name": "Client name",
+    "phone": "Phone",
+    "email": "Email",
+    "notes": "Notes"
   },
   "projectsPage": {
     "title": "Projects & Contracts",
@@ -492,6 +518,14 @@
     "profit": "Profit",
     "empty": "No projects yet.",
     "noClient": "No client",
+    "add": "Add project",
+    "name": "Project name",
+    "code": "Project code",
+    "client": "Client",
+    "status": "Status",
+    "startDate": "Start date",
+    "endDate": "End date",
+    "notes": "Notes",
     "statuses": {
       "PLANNED": "Planned",
       "ACTIVE": "Active",
@@ -510,6 +544,20 @@
     "breakdown": "Fixed Obligations Breakdown",
     "pending": "Pending",
     "empty": "No monthly obligations yet.",
+    "add": "Add obligation",
+    "name": "Obligation name",
+    "category": "Category",
+    "amount": "Amount",
+    "frequency": "Frequency",
+    "dueDate": "Due date",
+    "notes": "Notes",
+    "overdue": "Overdue",
+    "frequencies": {
+      "MONTHLY": "Monthly",
+      "QUARTERLY": "Quarterly",
+      "YEARLY": "Yearly",
+      "ONE_TIME": "One-time"
+    },
     "categories": {
       "SALARIES": "Salaries",
       "RENT": "Rent",
@@ -556,7 +604,15 @@
     "payroll": "Total Payroll",
     "salary": "Salary",
     "empty": "No employees yet.",
-    "payrollEmpty": "No payroll records yet."
+    "payrollEmpty": "No payroll records yet.",
+    "add": "Add employee",
+    "name": "Full name",
+    "position": "Position",
+    "phone": "Phone",
+    "email": "Email",
+    "joiningDate": "Joining date",
+    "status": "Status",
+    "notes": "Notes"
   },
   "assetsPage": {
     "title": "Assets & Custody",
@@ -574,6 +630,21 @@
     "status": "Status",
     "custodyEmpty": "No cash advances yet.",
     "openTotal": "Total Open Custody",
+    "add": "Add asset",
+    "addCustody": "Add cash advance",
+    "name": "Asset name",
+    "categoryLabel": "Category",
+    "purchaseDate": "Purchase date",
+    "notes": "Notes",
+    "dueDate": "Due date",
+    "settle": "Settle",
+    "categories": {
+      "VEHICLES": "Vehicles",
+      "EQUIPMENT": "Equipment",
+      "FURNITURE": "Furniture",
+      "DEVICES": "Devices",
+      "OTHER": "Other"
+    },
     "statuses": {
       "OPEN": "Open",
       "PARTIALLY_SETTLED": "Partial",
@@ -587,7 +658,23 @@
     "expiring": "Expiring in 60 days",
     "valid": "Valid",
     "total": "Total",
-    "empty": "Document expiry tracking will appear here in the next milestone."
+    "empty": "No company documents yet.",
+    "add": "Add document",
+    "name": "Document name",
+    "category": "Category",
+    "expiryDate": "Expiry date",
+    "notes": "Notes",
+    "categories": {
+      "LICENSE": "License",
+      "CR": "Commercial registration",
+      "ID": "ID",
+      "CONTRACT": "Contract",
+      "INSURANCE": "Insurance",
+      "OTHER": "Other"
+    },
+    "statusExpired": "Expired",
+    "statusExpiring": "Expiring",
+    "statusValid": "Valid"
   },
   "settings": {
     "title": "Settings",
@@ -613,5 +700,44 @@
     "company": "Company",
     "phone": "Phone",
     "system": "System"
+  },
+  "notificationsPage": {
+    "title": "Notifications",
+    "empty": "No alerts yet. Refresh to generate overdue obligation alerts.",
+    "refresh": "Refresh alerts",
+    "markRead": "Mark read",
+    "unread": "Unread"
+  },
+  "auditLogPage": {
+    "title": "Audit Log",
+    "subtitle": "Who changed financial and system records.",
+    "empty": "No audit activity yet.",
+    "date": "Date",
+    "user": "User",
+    "action": "Action",
+    "module": "Module",
+    "record": "Record"
+  },
+  "expensesPage": {
+    "operatingTitle": "Operating Expenses",
+    "projectTitle": "Project Expenses",
+    "add": "Add expense",
+    "description": "Description",
+    "amount": "Amount",
+    "category": "Category",
+    "date": "Date",
+    "project": "Project",
+    "selectProject": "Select a project",
+    "notes": "Notes",
+    "empty": "No expenses yet.",
+    "total": "Total"
+  },
+  "payrollPage": {
+    "add": "Add payroll",
+    "employee": "Employee",
+    "selectEmployee": "Select an employee",
+    "periodStart": "Period start",
+    "periodEnd": "Period end",
+    "salary": "Salary"
   }
 }

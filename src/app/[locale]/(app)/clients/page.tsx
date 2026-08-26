@@ -8,6 +8,9 @@ import { KpiCard } from "@/components/ui/kpi-card";
 import { StatusPill } from "@/components/ui/status-pill";
 import { InitialsAvatar } from "@/components/ui/initials-avatar";
 import { EmptyState } from "@/components/ui/empty-state";
+import { ClientFormDialog } from "@/features/clients/client-form";
+import { DeleteRecordButton } from "@/features/records/delete-button";
+import { deleteClientAction } from "@/features/clients/actions";
 
 export default async function ClientsPage() {
   const user = await requireUser();
@@ -20,7 +23,11 @@ export default async function ClientsPage() {
 
   return (
     <div className="flex flex-col gap-3.5">
-      <PageHeader title={t("title")} icon={Contact} />
+      <PageHeader
+        title={t("title")}
+        icon={Contact}
+        actions={<ClientFormDialog />}
+      />
       <section className="grid grid-cols-2 gap-2.5 xl:grid-cols-4">
         <KpiCard accent="brand" label={t("total")} value={String(clients.length)} />
         <KpiCard accent="success" label={t("active")} value={String(active)} valueClassName="text-success" />
@@ -42,17 +49,18 @@ export default async function ClientsPage() {
         <EmptyState title={t("empty")} />
       ) : (
         <div className="overflow-hidden rounded-[13px] border border-border bg-card">
-          <div className="grid grid-cols-[1fr_90px_120px_120px_100px] gap-2 bg-muted px-3.5 py-2.5 text-[11px] font-semibold text-muted-foreground">
+          <div className="grid grid-cols-[1fr_90px_120px_120px_100px_minmax(140px,auto)] gap-2 bg-muted px-3.5 py-2.5 text-[11px] font-semibold text-muted-foreground">
             <span>{t("client")}</span>
             <span>{t("projectCount")}</span>
             <span>{t("contractValue")}</span>
             <span>{t("collected")}</span>
             <span>{t("status")}</span>
+            <span>{t("action")}</span>
           </div>
           {clients.map((client) => (
             <div
               key={client.id}
-              className="grid grid-cols-[1fr_90px_120px_120px_100px] items-center gap-2 border-b border-muted px-3.5 py-2.5 text-[12.5px] last:border-0"
+              className="grid grid-cols-[1fr_90px_120px_120px_100px_minmax(140px,auto)] items-center gap-2 border-b border-muted px-3.5 py-2.5 text-[12.5px] last:border-0"
             >
               <div className="flex items-center gap-2.5">
                 <InitialsAvatar name={client.name} tone="info" />
@@ -73,6 +81,18 @@ export default async function ClientsPage() {
               ) : (
                 <StatusPill variant="success">{t("activeStatus")}</StatusPill>
               )}
+              <div className="flex flex-wrap gap-1">
+                <ClientFormDialog
+                  client={{
+                    id: client.id,
+                    name: client.name,
+                    email: client.email,
+                    phone: client.phone,
+                    notes: client.notes,
+                  }}
+                />
+                <DeleteRecordButton id={client.id} action={deleteClientAction} />
+              </div>
             </div>
           ))}
         </div>

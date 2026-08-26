@@ -27,14 +27,18 @@ export async function getDashboardWorkspace(companyId: string) {
         },
       }),
       prisma.obligation.findMany({
-        where: { companyId, status: "ACTIVE" },
+        where: { companyId, status: { in: ["ACTIVE", "PAUSED"] } },
         orderBy: { amount: "desc" },
         select: {
           id: true,
           name: true,
           amount: true,
           category: true,
+          frequency: true,
+          dueDate: true,
           nextDueDate: true,
+          notes: true,
+          status: true,
         },
       }),
     ]);
@@ -54,7 +58,7 @@ export async function getDashboardWorkspace(companyId: string) {
 }
 
 export async function getBankWorkspace(companyId: string) {
-  const [accounts, cards, snapshot] = await Promise.all([
+  const [accounts, cards, snapshot, movements] = await Promise.all([
     prisma.bankAccount.findMany({
       where: { companyId, isActive: true },
       orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
@@ -64,9 +68,30 @@ export async function getBankWorkspace(companyId: string) {
       orderBy: { createdAt: "asc" },
     }),
     getCompanyFinancialSnapshot(companyId),
+    prisma.bankTransaction.findMany({
+      where: { companyId, status: "POSTED" },
+      select: { bankAccountId: true, type: true, amount: true },
+    }),
   ]);
 
-  return { accounts, cards, snapshot };
+  const balances = new Map<string, bigint>();
+  for (const row of movements) {
+    const current = balances.get(row.bankAccountId) ?? 0n;
+    const amount = decimalToFils(row.amount);
+    balances.set(
+      row.bankAccountId,
+      row.type === "DEPOSIT" ? current + amount : current - amount,
+    );
+  }
+
+  return {
+    accounts: accounts.map((account) => ({
+      ...account,
+      balance: balances.get(account.id) ?? 0n,
+    })),
+    cards,
+    snapshot,
+  };
 }
 
 export async function getClientsWorkspace(companyId: string) {
@@ -109,6 +134,7 @@ export async function getClientsWorkspace(companyId: string) {
       name: client.name,
       email: client.email,
       phone: client.phone,
+      notes: client.notes,
       projectCount: client.projects.length,
       contractValue,
       collected,
@@ -152,7 +178,10 @@ export async function getProjectsWorkspace(companyId: string) {
       code: project.code,
       name: project.name,
       status: project.status,
+      clientId: project.clientId,
       clientName: project.client?.name ?? null,
+      notes: project.notes,
+      contractValueInput: project.contractValue.toString(),
       contractValue,
       collected,
       spent,

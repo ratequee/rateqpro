@@ -172,6 +172,7 @@ model Company {
   auditLogs               AuditLog[]
   subscription            Subscription?
   userNotificationPrefs   UserNotificationPreference[]
+  documents               CompanyDocument[]
 
   @@index([slug])
 }
@@ -586,6 +587,21 @@ model UserNotificationPreference {
   systemActivity        Boolean @default(true)
 
   @@index([companyId])
+}
+
+model CompanyDocument {
+  id          String    @id @default(cuid())
+  companyId   String
+  company     Company   @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  name        String
+  category    String    @default("OTHER")
+  expiryDate  DateTime? @db.Date
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([companyId])
+  @@index([companyId, expiryDate])
 }
 
 model Attachment {

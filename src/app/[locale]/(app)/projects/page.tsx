@@ -8,12 +8,23 @@ import { KpiCard } from "@/components/ui/kpi-card";
 import { StatusPill } from "@/components/ui/status-pill";
 import { EmptyState } from "@/components/ui/empty-state";
 import { cn } from "@/lib/utils";
+import { ProjectFormDialog } from "@/features/projects/project-form";
+import { DeleteRecordButton } from "@/features/records/delete-button";
+import { deleteProjectAction } from "@/features/projects/actions";
+import { serializeMoney } from "@/features/records/helpers";
+import { prisma } from "@/lib/db/prisma";
+import { companyScope } from "@/lib/db/tenant";
 
 export default async function ProjectsPage() {
   const user = await requireUser();
   const locale = await getLocale();
   const t = await getTranslations("projectsPage");
   const projects = await getProjectsWorkspace(user.companyId);
+  const clients = await prisma.client.findMany({
+    where: companyScope(user.companyId),
+    select: { id: true, name: true },
+    orderBy: { name: "asc" },
+  });
   const active = projects.filter((item) => item.status === "ACTIVE").length;
   const contracts = projects.reduce((sum, item) => sum + item.contractValue, 0n);
   const collected = projects.reduce((sum, item) => sum + item.collected, 0n);
@@ -21,7 +32,11 @@ export default async function ProjectsPage() {
 
   return (
     <div className="flex flex-col gap-3.5">
-      <PageHeader title={t("title")} icon={ClipboardList} />
+      <PageHeader
+        title={t("title")}
+        icon={ClipboardList}
+        actions={<ProjectFormDialog currencyCode={user.currencyCode} clients={clients} />}
+      />
       <section className="grid grid-cols-2 gap-2.5 xl:grid-cols-4">
         <KpiCard
           accent="success"
@@ -52,9 +67,25 @@ export default async function ProjectsPage() {
                 <span className="rounded-md bg-brand-soft px-2 py-0.5 text-[11px] font-bold text-primary">
                   {project.code}
                 </span>
-                <StatusPill variant={project.status === "COMPLETED" ? "info" : "success"}>
-                  {t(`statuses.${project.status}`)}
-                </StatusPill>
+                <div className="flex items-center gap-1.5">
+                  <StatusPill variant={project.status === "COMPLETED" ? "info" : "success"}>
+                    {t(`statuses.${project.status}`)}
+                  </StatusPill>
+                  <ProjectFormDialog
+                    currencyCode={user.currencyCode}
+                    clients={clients}
+                    project={{
+                      id: project.id,
+                      name: project.name,
+                      code: project.code,
+                      clientId: project.clientId,
+                      contractValue: serializeMoney(project.contractValueInput),
+                      status: project.status,
+                      notes: project.notes,
+                    }}
+                  />
+                  <DeleteRecordButton id={project.id} action={deleteProjectAction} />
+                </div>
               </div>
               <div className="text-sm font-bold">{project.name}</div>
               <div className="mb-2.5 mt-0.5 text-[11.5px] text-muted-foreground">

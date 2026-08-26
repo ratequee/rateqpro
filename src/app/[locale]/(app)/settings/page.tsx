@@ -14,6 +14,7 @@ import { redirect, Link } from "@/i18n/navigation";
 import { Badge } from "@/components/ui/badge";
 import { InitialsAvatar } from "@/components/ui/initials-avatar";
 import { LanguageSwitch } from "@/components/ui/language-switch";
+import { UserFormDialog } from "@/features/users/user-form";
 
 export default async function SettingsPage() {
   const user = await requirePermission("settings", "view");
@@ -69,8 +70,9 @@ export default async function SettingsPage() {
         }
         users={
           <div>
-            <h2 className="mb-3 flex items-center gap-1.5 border-b border-border pb-2.5 text-[13.5px] font-bold">
+            <h2 className="mb-3 flex items-center justify-between gap-1.5 border-b border-border pb-2.5 text-[13.5px] font-bold">
               {t("users")}
+              <UserFormDialog />
             </h2>
             <div className="overflow-hidden rounded-[10px] border border-border">
               {users.map((item) => (

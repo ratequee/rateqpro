@@ -5,6 +5,9 @@ import { companyScope } from "@/lib/db/tenant";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Badge } from "@/components/ui/badge";
+import { UserFormDialog } from "@/features/users/user-form";
+import { DeleteRecordButton } from "@/features/records/delete-button";
+import { deleteUserAction } from "@/features/users/actions";
 
 export default async function UsersPage() {
   const user = await requirePermission("users", "view");
@@ -23,7 +26,7 @@ export default async function UsersPage() {
 
   return (
     <div>
-      <PageHeader title={t("title")} description={t("subtitle")} />
+      <PageHeader title={t("title")} description={t("subtitle")} actions={<UserFormDialog />} />
       {users.length === 0 ? (
         <EmptyState title={t("title")} />
       ) : (
@@ -35,6 +38,7 @@ export default async function UsersPage() {
                 <th className="px-4 py-3 font-semibold">{t("email")}</th>
                 <th className="px-4 py-3 font-semibold">{t("role")}</th>
                 <th className="px-4 py-3 font-semibold">{t("status")}</th>
+                <th className="px-4 py-3 font-semibold" />
               </tr>
             </thead>
             <tbody>
@@ -49,6 +53,14 @@ export default async function UsersPage() {
                     <Badge variant={item.status === "ACTIVE" ? "success" : "muted"}>
                       {t(`statuses.${item.status}`)}
                     </Badge>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex justify-end gap-1">
+                      <UserFormDialog user={item} />
+                      {item.id !== user.id ? (
+                        <DeleteRecordButton id={item.id} action={deleteUserAction} />
+                      ) : null}
+                    </div>
                   </td>
                 </tr>
               ))}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useActionState, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import {
   Building2,
@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { SectionCard } from "@/components/ui/section-card";
 import { KpiCard } from "@/components/ui/kpi-card";
 import { cn } from "@/lib/utils";
+import { importBankStatementAction } from "./actions";
 
 const BANKS = [
   { code: "QIB", name: "QIB", short: "Qatar Islamic Bank", color: "bg-brand-soft text-primary" },
@@ -71,7 +72,13 @@ type ParsedRow = {
   balance: number | null;
 };
 
-export function BankReader() {
+export function BankReader({
+  accounts,
+  defaultAccountId,
+}: {
+  accounts: Array<{ id: string; name: string }>;
+  defaultAccountId: string;
+}) {
   const t = useTranslations("bankReader");
   const [bank, setBank] = useState<string | null>(null);
   const [step, setStep] = useState(1);
@@ -79,6 +86,7 @@ export function BankReader() {
   const [filter, setFilter] = useState<"all" | "in" | "out">("all");
   const [query, setQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [importState, importAction, importing] = useActionState(importBankStatementAction, {});
 
   const selected = BANKS.find((item) => item.code === bank);
 
@@ -331,6 +339,40 @@ export function BankReader() {
               </div>
             ))}
           </div>
+          {accounts.length > 0 ? (
+            <form action={importAction} className="flex flex-wrap items-center justify-between gap-2 rounded-[13px] border border-border bg-card px-3.5 py-3">
+              <input type="hidden" name="rows" value={JSON.stringify(visible)} />
+              <div className="flex items-center gap-2 text-sm">
+                <span className="text-muted-foreground">{t("importInto")}</span>
+                <select
+                  name="bankAccountId"
+                  defaultValue={defaultAccountId}
+                  className="h-9 rounded-lg border border-input bg-muted px-2 text-sm"
+                >
+                  {accounts.map((account) => (
+                    <option key={account.id} value={account.id}>
+                      {account.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-center gap-2">
+                {importState.error ? (
+                  <span className="text-sm text-destructive">{t("importError")}</span>
+                ) : null}
+                {importState.ok ? (
+                  <span className="text-sm text-success">
+                    {t("imported", { count: importState.imported ?? visible.length })}
+                  </span>
+                ) : null}
+                <Button type="submit" disabled={importing || visible.length === 0}>
+                  {importing ? t("importing") : t("import")}
+                </Button>
+              </div>
+            </form>
+          ) : (
+            <p className="text-sm text-muted-foreground">{t("needAccount")}</p>
+          )}
         </>
       ) : null}
     </div>

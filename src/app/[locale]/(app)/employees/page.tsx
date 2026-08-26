@@ -5,10 +5,16 @@ import { getEmployeesWorkspace } from "@/lib/finance/workspace";
 import { formatAmount } from "@/lib/formatting/currency";
 import { PageHeader } from "@/components/ui/page-header";
 import { KpiCard } from "@/components/ui/kpi-card";
-import { StatusPill } from "@/components/ui/status-pill";
 import { InitialsAvatar } from "@/components/ui/initials-avatar";
 import { EmptyState } from "@/components/ui/empty-state";
 import { SectionCard } from "@/components/ui/section-card";
+import { EmployeeFormDialog } from "@/features/employees/employee-form";
+import { DeleteRecordButton } from "@/features/records/delete-button";
+import { deleteEmployeeAction } from "@/features/employees/actions";
+import { PayrollFormDialog } from "@/features/payroll/payroll-form";
+import { deletePayrollAction } from "@/features/payroll/actions";
+import { serializeMoney } from "@/features/records/helpers";
+import { toDateInputValue } from "@/lib/formatting/date";
 
 export default async function EmployeesPage() {
   const user = await requireUser();
@@ -19,7 +25,19 @@ export default async function EmployeesPage() {
 
   return (
     <div className="flex flex-col gap-3.5">
-      <PageHeader title={t("title")} icon={Users} />
+      <PageHeader
+        title={t("title")}
+        icon={Users}
+        actions={
+          <div className="flex gap-2">
+            <EmployeeFormDialog currencyCode={user.currencyCode} />
+            <PayrollFormDialog
+              currencyCode={user.currencyCode}
+              employees={employees.map((item) => ({ id: item.id, name: item.name }))}
+            />
+          </div>
+        }
+      />
       <section className="grid grid-cols-2 gap-2.5 xl:grid-cols-4">
         <KpiCard accent="brand" label={t("total")} value={String(employees.length)} />
         <KpiCard accent="success" label={t("active")} value={String(active)} valueClassName="text-success" />
@@ -42,11 +60,29 @@ export default async function EmployeesPage() {
         <div className="grid gap-2.5 md:grid-cols-3">
           {employees.map((employee) => (
             <div key={employee.id} className="rounded-[13px] border border-border bg-card p-3.5">
-              <div className="mb-2.5 flex items-center gap-2.5">
-                <InitialsAvatar name={employee.name} tone="info" size="lg" />
-                <div>
-                  <div className="text-[13px] font-bold">{employee.name}</div>
-                  <div className="text-[11px] text-muted-foreground">{employee.position ?? "—"}</div>
+              <div className="mb-2.5 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2.5">
+                  <InitialsAvatar name={employee.name} tone="info" size="lg" />
+                  <div>
+                    <div className="text-[13px] font-bold">{employee.name}</div>
+                    <div className="text-[11px] text-muted-foreground">{employee.position ?? "—"}</div>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <EmployeeFormDialog
+                    currencyCode={user.currencyCode}
+                    employee={{
+                      id: employee.id,
+                      name: employee.name,
+                      position: employee.position,
+                      phone: employee.phone,
+                      email: employee.email,
+                      salary: serializeMoney(employee.salary),
+                      status: employee.status,
+                      notes: employee.notes,
+                    }}
+                  />
+                  <DeleteRecordButton id={employee.id} action={deleteEmployeeAction} />
                 </div>
               </div>
               <div className="flex items-center justify-between rounded-[7px] bg-muted px-2.5 py-1.5">
@@ -59,17 +95,30 @@ export default async function EmployeesPage() {
           ))}
         </div>
       )}
-      <SectionCard title={t("title")}>
+      <SectionCard title={t("payroll")}>
         {payrolls.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t("payrollEmpty")}</p>
         ) : (
           payrolls.map((row) => (
-            <div key={row.id} className="flex items-center justify-between border-b border-muted py-2 text-[12.5px] last:border-0">
+            <div key={row.id} className="flex items-center justify-between gap-2 border-b border-muted py-2 text-[12.5px] last:border-0">
               <span className="font-semibold">{row.employee.name}</span>
               <span className="font-bold text-primary">
                 {formatAmount(row.salary.toString(), locale)} {user.currencyCode}
               </span>
-              <StatusPill variant="pending">—</StatusPill>
+              <div className="flex items-center gap-1">
+                <PayrollFormDialog
+                  currencyCode={user.currencyCode}
+                  employees={employees.map((item) => ({ id: item.id, name: item.name }))}
+                  payroll={{
+                    id: row.id,
+                    employeeId: row.employeeId,
+                    periodStart: toDateInputValue(row.periodStart),
+                    periodEnd: toDateInputValue(row.periodEnd),
+                    salary: serializeMoney(row.salary),
+                  }}
+                />
+                <DeleteRecordButton id={row.id} action={deletePayrollAction} />
+              </div>
             </div>
           ))
         )}

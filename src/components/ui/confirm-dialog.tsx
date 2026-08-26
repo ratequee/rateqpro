@@ -36,7 +36,14 @@ export function ConfirmDialog({
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
-          <AlertDialogAction onClick={onConfirm}>{t("confirm")}</AlertDialogAction>
+          <AlertDialogAction
+            onClick={(event) => {
+              event.preventDefault();
+              onConfirm();
+            }}
+          >
+            {t("confirm")}
+          </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

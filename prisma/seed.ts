@@ -15,6 +15,7 @@ async function main() {
   await prisma.notification.deleteMany();
   await prisma.auditLog.deleteMany();
   await prisma.attachment.deleteMany();
+  await prisma.companyDocument.deleteMany();
   await prisma.payrollAllocation.deleteMany();
   await prisma.payroll.deleteMany();
   await prisma.cashAdvanceSettlement.deleteMany();
