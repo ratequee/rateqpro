@@ -49,7 +49,7 @@ function fail(name: string, error: unknown): Check {
   };
 }
 
-function assert(condition: unknown, message: string): void {
+function assert(condition: unknown, message = "assertion failed"): asserts condition {
   if (!condition) {
     throw new Error(message);
   }
@@ -632,8 +632,8 @@ async function main() {
           data: { salary: "7600.00" },
         });
         const workspace = await getEmployeesWorkspace(companyId);
-        assert(workspace.employees.some((item) => item.id === created.id && item.position === "Senior Foreman"));
-        assert(workspace.payrolls.some((item) => item.id === payroll.id));
+        assert(workspace.employees.some((item) => item.id === created.id && item.position === "Senior Foreman"), "employee missing from workspace");
+        assert(workspace.payrolls.some((item) => item.id === payroll.id), "payroll missing from workspace");
         checks.push(check("create/edit employee", true));
         checks.push(check("create/edit payroll", true));
       } catch (error) {
@@ -696,8 +696,8 @@ async function main() {
           data: { status: "SETTLED" },
         });
         const workspace = await getAssetsWorkspace(companyId);
-        assert(workspace.assets.some((item) => item.id === created.id));
-        assert(workspace.advances.some((item) => item.id === advance.id && item.status === "SETTLED"));
+        assert(workspace.assets.some((item) => item.id === created.id), "asset missing from workspace");
+        assert(workspace.advances.some((item) => item.id === advance.id && item.status === "SETTLED"), "cash advance missing from workspace");
         checks.push(check("create/edit asset", true));
         checks.push(check("create/settle cash advance", true));
       } catch (error) {
@@ -734,7 +734,7 @@ async function main() {
         const listed = await prisma.companyDocument.findMany({
           where: { companyId, name: { startsWith: TAG } },
         });
-        assert(listed.length === 1 && listed[0]?.notes === "updated");
+        assert(listed.length === 1 && listed[0]?.notes === "updated", "document update not persisted");
         checks.push(check("create/edit document", true, created.name));
       } catch (error) {
         checks.push(fail("documents", error));
@@ -761,7 +761,8 @@ async function main() {
           category: "materials",
           description: `${TAG} Materials`,
         });
-        assert(op.success && pr.success, "expense schema failed");
+        assert(op.success, "operating expense schema failed");
+        assert(pr.success, "project expense schema failed");
         const operating = await prisma.expense.create({
           data: {
             companyId,
@@ -799,7 +800,7 @@ async function main() {
         const prs = await prisma.expense.count({
           where: { companyId, kind: "PROJECT", description: { startsWith: TAG } },
         });
-        assert(ops === 1 && prs === 1);
+        assert(ops === 1 && prs === 1, "expense rows missing after create");
         checks.push(check("operating expense create/edit", true));
         checks.push(check("project expense create", true));
       } catch (error) {
@@ -837,7 +838,7 @@ async function main() {
           data: { name: `${TAG} User Edited`, status: "INACTIVE" },
         });
         const listed = await prisma.user.findUnique({ where: { id: created.id } });
-        assert(listed?.name.endsWith("Edited") && listed.status === "INACTIVE");
+        assert(listed?.name.endsWith("Edited") && listed.status === "INACTIVE", "user update not persisted");
         checks.push(check("create user", true, email));
         checks.push(check("edit + deactivate", true, listed?.status));
       } catch (error) {
