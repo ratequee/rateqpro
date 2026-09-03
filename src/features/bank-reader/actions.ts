@@ -4,25 +4,11 @@ import { requirePermission } from "@/lib/auth/guards";
 import { prisma } from "@/lib/db/prisma";
 import { companyScope } from "@/lib/db/tenant";
 import { writeAuditLog } from "@/lib/audit/write";
-import { fromDateInputValue } from "@/lib/formatting/date";
+import { parseStatementDate } from "@/lib/finance/statement-parse";
 import { bankImportSchema } from "@/lib/validation/records";
 import { nextTransactionReference } from "@/services/transactions";
 import { failState, revalidateApp } from "@/features/records/helpers";
 import type { RecordActionState } from "@/features/records/state";
-
-function parseStatementDate(value: string): Date | null {
-  const iso = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (iso) {
-    return fromDateInputValue(`${iso[1]}-${iso[2]}-${iso[3]}`);
-  }
-  const dmy = value.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$/);
-  if (dmy) {
-    return fromDateInputValue(
-      `${dmy[3]}-${dmy[2].padStart(2, "0")}-${dmy[1].padStart(2, "0")}`,
-    );
-  }
-  return null;
-}
 
 export async function importBankStatementAction(
   _prev: RecordActionState,

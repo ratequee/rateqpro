@@ -16,6 +16,17 @@ import { Button } from "@/components/ui/button";
 import { SectionCard } from "@/components/ui/section-card";
 import { KpiCard } from "@/components/ui/kpi-card";
 import { cn } from "@/lib/utils";
+import {
+  BANK_COLUMNS,
+  closingBalance,
+  importDescription,
+  isBankCode,
+  parseStatementCsv,
+  statementTemplateCsv,
+  toIsoDate,
+  type ParsedStatementRow,
+} from "@/lib/finance/statement-parse";
+import { parseStatementWorkbook } from "./read-workbook";
 import { importBankStatementAction } from "./actions";
 
 const BANKS = [
@@ -26,51 +37,7 @@ const BANKS = [
   { code: "MASRAF", name: "Masraf Al Rayan", short: "مصرف الريان", color: "bg-ok-bg text-success" },
 ] as const;
 
-const COLS: Record<string, { label: string; value: string }[]> = {
-  QIB: [
-    { label: "A", value: "Date" },
-    { label: "B", value: "Description" },
-    { label: "C", value: "Ref" },
-    { label: "D", value: "Debit" },
-    { label: "E", value: "Credit" },
-  ],
-  AAHLI: [
-    { label: "A", value: "Date" },
-    { label: "B", value: "Description" },
-    { label: "C", value: "Withdrawn" },
-    { label: "D", value: "Deposited" },
-    { label: "E", value: "Balance" },
-  ],
-  QIIB: [
-    { label: "A", value: "Date" },
-    { label: "B", value: "Description" },
-    { label: "C", value: "Debit" },
-    { label: "D", value: "Credit" },
-    { label: "E", value: "Balance" },
-  ],
-  CBQ: [
-    { label: "A", value: "Date" },
-    { label: "B", value: "Value date" },
-    { label: "C", value: "Description" },
-    { label: "D", value: "Out" },
-    { label: "E", value: "In" },
-  ],
-  MASRAF: [
-    { label: "A", value: "Date" },
-    { label: "B", value: "Description" },
-    { label: "C", value: "Ref" },
-    { label: "D", value: "Debit" },
-    { label: "E", value: "Credit" },
-  ],
-};
-
-type ParsedRow = {
-  date: string;
-  desc: string;
-  debit: number;
-  credit: number;
-  balance: number | null;
-};
+const ACCEPTED_EXT = new Set(["csv", "xlsx", "xls"]);
 
 export function BankReader({
   accounts,
@@ -82,13 +49,15 @@ export function BankReader({
   const t = useTranslations("bankReader");
   const [bank, setBank] = useState<string | null>(null);
   const [step, setStep] = useState(1);
-  const [rows, setRows] = useState<ParsedRow[]>([]);
+  const [rows, setRows] = useState<ParsedStatementRow[]>([]);
   const [filter, setFilter] = useState<"all" | "in" | "out">("all");
   const [query, setQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [reading, setReading] = useState(false);
   const [importState, importAction, importing] = useActionState(importBankStatementAction, {});
 
   const selected = BANKS.find((item) => item.code === bank);
+  const columns = selected ? BANK_COLUMNS[selected.code] : [];
 
   function reset() {
     setBank(null);
@@ -97,6 +66,7 @@ export function BankReader({
     setFilter("all");
     setQuery("");
     setError(null);
+    setReading(false);
   }
 
   function selectBank(code: string) {
@@ -107,11 +77,8 @@ export function BankReader({
   }
 
   function downloadTemplate() {
-    if (!bank) return;
-    const cols = COLS[bank] ?? [];
-    const header = cols.map((col) => col.value).join(",");
-    const sample = "01/07/2026,Incoming transfer,REF-001,,10000\n02/07/2026,Salaries,REF-002,16500,";
-    const blob = new Blob([`${header}\n${sample}`], { type: "text/csv;charset=utf-8" });
+    if (!bank || !isBankCode(bank)) return;
+    const blob = new Blob([statementTemplateCsv(bank)], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
@@ -120,41 +87,73 @@ export function BankReader({
     URL.revokeObjectURL(url);
   }
 
-  function handleFile(file: File | undefined) {
+  async function handleFile(file: File | undefined) {
     if (!bank) {
       setError(t("selectFirst"));
       return;
     }
-    if (!file) return;
+    if (!file || !isBankCode(bank)) return;
     const ext = file.name.split(".").pop()?.toLowerCase();
-    if (ext !== "csv") {
+    if (!ext || !ACCEPTED_EXT.has(ext)) {
       setError(t("unsupported"));
       return;
     }
     setError(null);
+    setReading(true);
     setStep(3);
-    const reader = new FileReader();
-    reader.onload = () => {
-      const text = String(reader.result ?? "");
-      const parsed = parseCsv(text);
+    try {
+      const parsed =
+        ext === "csv"
+          ? parseStatementCsv(await file.text(), bank)
+          : await parseStatementWorkbook(await file.arrayBuffer(), bank);
+      if (parsed.length === 0) {
+        setRows([]);
+        setError(t("noTransactions"));
+        setStep(2);
+        return;
+      }
       setRows(parsed);
       setStep(4);
-    };
-    reader.readAsText(file, "UTF-8");
+    } catch {
+      setRows([]);
+      setError(t("parseError"));
+      setStep(2);
+    } finally {
+      setReading(false);
+    }
   }
 
   const summary = useMemo(() => {
     const deposits = rows.reduce((sum, row) => sum + row.credit, 0);
     const withdrawals = rows.reduce((sum, row) => sum + row.debit, 0);
-    return { deposits, withdrawals, count: rows.length };
+    return {
+      deposits,
+      withdrawals,
+      count: rows.length,
+      closing: closingBalance(rows),
+    };
   }, [rows]);
 
   const visible = rows.filter((row) => {
     if (filter === "in" && row.credit <= 0) return false;
     if (filter === "out" && row.debit <= 0) return false;
-    if (query && !row.desc.toLowerCase().includes(query.toLowerCase())) return false;
+    if (query) {
+      const haystack = `${row.desc} ${row.accountNumber} ${row.reference}`.toLowerCase();
+      if (!haystack.includes(query.toLowerCase())) return false;
+    }
     return true;
   });
+
+  const importRows = visible.map((row) => ({
+    date: toIsoDate(row.date) ?? row.date,
+    desc: importDescription(row),
+    debit: row.debit,
+    credit: row.credit,
+  }));
+
+  const showAccount = rows.some((row) => row.accountNumber);
+  const showRef = rows.some((row) => row.reference);
+  const showBalance = rows.some((row) => row.balance != null);
 
   return (
     <div className="flex flex-col gap-3.5">
@@ -227,9 +226,9 @@ export function BankReader({
             <p className="mb-2 text-xs font-bold text-primary-deep">
               {t("formatFor")} {selected.name}
             </p>
-            <div className="grid grid-cols-2 gap-1.5 md:grid-cols-5">
-              {(COLS[selected.code] ?? []).map((col) => (
-                <div key={col.label} className="rounded-lg border border-primary/25 bg-card px-2 py-1.5">
+            <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4 xl:grid-cols-7">
+              {columns.map((col) => (
+                <div key={`${col.label}-${col.value}`} className="rounded-lg border border-primary/25 bg-card px-2 py-1.5">
                   <div className="text-[9.5px] text-ink-light">{col.label}</div>
                   <div className="text-[11px] font-bold text-primary-deep">{col.value}</div>
                 </div>
@@ -259,12 +258,15 @@ export function BankReader({
           <label className="flex cursor-pointer flex-col items-center rounded-[13px] border-2 border-dashed border-border bg-muted px-5 py-9 text-center hover:border-primary hover:bg-brand-soft">
             <input
               type="file"
-              accept=".csv"
+              accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
               className="hidden"
-              onChange={(event) => handleFile(event.target.files?.[0])}
+              onChange={(event) => {
+                void handleFile(event.target.files?.[0]);
+                event.target.value = "";
+              }}
             />
             <Upload className="mb-2.5 size-9 text-ink-light" />
-            <div className="text-[15px] font-bold">{t("drop")}</div>
+            <div className="text-[15px] font-bold">{reading ? t("reading") : t("drop")}</div>
             <div className="mt-1 text-xs text-muted-foreground">{t("csvOnly")}</div>
             <div className="mt-3 flex gap-2">
               <span className="rounded-full border border-er-border bg-er-bg px-3 py-1 text-[11px] font-bold text-er-fg">
@@ -275,7 +277,7 @@ export function BankReader({
                 <FileSpreadsheet className="me-1 inline size-3" />
                 Excel
               </span>
-              <span className="rounded-full border border-in-border bg-in-bg px-3 py-1 text-[11px] font-bold text-in-fg">
+              <span className="rounded-full border border-ok-border bg-ok-bg px-3 py-1 text-[11px] font-bold text-ok-fg">
                 <FileText className="me-1 inline size-3" />
                 CSV
               </span>
@@ -292,7 +294,12 @@ export function BankReader({
               <KpiCard accent="success" label={t("deposits")} value={summary.deposits.toLocaleString()} hint="QAR" />
               <KpiCard accent="danger" label={t("withdrawals")} value={summary.withdrawals.toLocaleString()} hint="QAR" />
               <KpiCard accent="info" label={t("count")} value={String(summary.count)} />
-              <KpiCard accent="brand" label={t("closing")} value="—" />
+              <KpiCard
+                accent="brand"
+                label={t("closing")}
+                value={summary.closing == null ? "—" : summary.closing.toLocaleString()}
+                hint={summary.closing == null ? undefined : "QAR"}
+              />
             </div>
           </SectionCard>
           <div className="overflow-hidden rounded-[13px] border border-border bg-card">
@@ -321,27 +328,53 @@ export function BankReader({
                 />
               </div>
             </div>
-            <div className="grid grid-cols-[100px_1fr_110px_110px] gap-2 border-b border-border bg-muted px-3.5 py-2.5 text-[11px] font-semibold text-muted-foreground">
+            <div
+              className={cn(
+                "grid gap-2 border-b border-border bg-muted px-3.5 py-2.5 text-[11px] font-semibold text-muted-foreground",
+                showBalance ? "grid-cols-[100px_1fr_110px_110px_110px]" : "grid-cols-[100px_1fr_110px_110px]",
+              )}
+            >
               <span>Date</span>
               <span>Description</span>
               <span>{t("debit")}</span>
               <span>{t("credit")}</span>
+              {showBalance ? <span>{t("balance")}</span> : null}
             </div>
             {visible.map((row, index) => (
               <div
-                key={`${row.date}-${index}`}
-                className="grid grid-cols-[100px_1fr_110px_110px] gap-2 border-b border-muted px-3.5 py-2.5 text-[12.5px] last:border-0"
+                key={`${row.date}-${row.reference}-${index}`}
+                className={cn(
+                  "grid gap-2 border-b border-muted px-3.5 py-2.5 text-[12.5px] last:border-0",
+                  showBalance ? "grid-cols-[100px_1fr_110px_110px_110px]" : "grid-cols-[100px_1fr_110px_110px]",
+                )}
               >
                 <span>{row.date}</span>
-                <span>{row.desc}</span>
+                <span>
+                  <span className="block">{row.desc}</span>
+                  {showAccount || showRef ? (
+                    <span className="mt-0.5 block text-[10.5px] text-muted-foreground">
+                      {[
+                        row.accountNumber ? `${t("accountNumber")} ${row.accountNumber}` : null,
+                        row.reference ? `${t("reference")} ${row.reference}` : null,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </span>
+                  ) : null}
+                </span>
                 <span className="font-bold text-destructive">{row.debit ? row.debit.toLocaleString() : "—"}</span>
                 <span className="font-bold text-success">{row.credit ? row.credit.toLocaleString() : "—"}</span>
+                {showBalance ? (
+                  <span className="font-semibold">
+                    {row.balance == null ? "—" : row.balance.toLocaleString()}
+                  </span>
+                ) : null}
               </div>
             ))}
           </div>
           {accounts.length > 0 ? (
             <form action={importAction} className="flex flex-wrap items-center justify-between gap-2 rounded-[13px] border border-border bg-card px-3.5 py-3">
-              <input type="hidden" name="rows" value={JSON.stringify(visible)} />
+              <input type="hidden" name="rows" value={JSON.stringify(importRows)} />
               <div className="flex items-center gap-2 text-sm">
                 <span className="text-muted-foreground">{t("importInto")}</span>
                 <select
@@ -377,21 +410,4 @@ export function BankReader({
       ) : null}
     </div>
   );
-}
-
-function parseCsv(text: string): ParsedRow[] {
-  const lines = text.split(/\r?\n/).map((line) => line.split(",").map((cell) => cell.trim().replace(/^"|"$/g, "")));
-  const rows: ParsedRow[] = [];
-  for (const line of lines.slice(1)) {
-    if (line.length < 3) continue;
-    const date = line[0] ?? "";
-    const desc = line[1] ?? "";
-    if (!desc) continue;
-    const nums = line.slice(2).map((cell) => Number(String(cell).replace(/,/g, "")) || 0);
-    const debit = nums[0] ?? 0;
-    const credit = nums[1] ?? 0;
-    if (!debit && !credit) continue;
-    rows.push({ date, desc, debit, credit, balance: nums[2] ?? null });
-  }
-  return rows;
 }
