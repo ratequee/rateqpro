@@ -3,7 +3,7 @@
 import { Bell, LogOut, Menu, Moon, Sun } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useTheme } from "next-themes";
-import { useState } from "react";
+import { Suspense, use, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -15,30 +15,46 @@ import {
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { LanguageSwitch } from "@/components/ui/language-switch";
 import { InitialsAvatar } from "@/components/ui/initials-avatar";
-import { Link, usePathname } from "@/i18n/navigation";
+import { Link } from "@/i18n/navigation";
 import { Sidebar } from "./sidebar";
 import { navTitleKey } from "./nav-config";
+import { useNavPending } from "./nav-pending";
 import { logoutAction } from "@/features/auth/actions";
 import { getFirstName } from "@/lib/formatting/initials";
 import type { CurrentUser } from "@/lib/auth/current-user";
 
+function HeaderAlertDot({ alertCount }: { alertCount: Promise<number> }) {
+  const count = use(alertCount);
+  if (count <= 0) return null;
+  return (
+    <span className="absolute -start-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full border-2 border-white bg-destructive text-[9px] font-bold text-white">
+      {count}
+    </span>
+  );
+}
+
 export function AppHeader({
   user,
-  alertCount = 0,
+  alertCount,
 }: {
   user: CurrentUser;
-  alertCount?: number;
+  alertCount: Promise<number>;
 }) {
   const t = useTranslations("common");
   const tNav = useTranslations("nav");
   const tUsers = useTranslations("users");
   const { resolvedTheme, setTheme } = useTheme();
-  const pathname = usePathname();
+  const { pathname, pendingHref } = useNavPending();
   const [open, setOpen] = useState(false);
-  const titleKey = navTitleKey(pathname);
+  const titleKey = navTitleKey(pendingHref ?? pathname);
 
   return (
-    <header className="sticky top-0 z-30 flex h-[54px] items-center justify-between border-b border-border bg-card px-5 shadow-[0_1px_0_var(--border)]">
+    <header className="relative sticky top-0 z-30 flex h-[54px] items-center justify-between border-b border-border bg-card px-5 shadow-[0_1px_0_var(--border)]">
+      {pendingHref ? (
+        <span className="absolute inset-x-0 bottom-0 h-0.5 overflow-hidden">
+          <span className="block h-full w-1/3 animate-pulse bg-gold-bright" />
+        </span>
+      ) : null}
       <div className="flex items-center gap-2">
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger asChild>
@@ -80,11 +96,9 @@ export function AppHeader({
         >
           <Link href="/approvals">
             <Bell className="size-4" />
-            {alertCount > 0 ? (
-              <span className="absolute -start-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full border-2 border-white bg-destructive text-[9px] font-bold text-white">
-                {alertCount}
-              </span>
-            ) : null}
+            <Suspense fallback={null}>
+              <HeaderAlertDot alertCount={alertCount} />
+            </Suspense>
           </Link>
         </Button>
 

@@ -1,34 +1,52 @@
 "use client";
 
+import { Suspense, use } from "react";
 import { LogOut } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { usePathname } from "@/i18n/navigation";
 import { Link } from "@/i18n/navigation";
 import { BrandMark } from "@/components/brand/mark";
 import { InitialsAvatar } from "@/components/ui/initials-avatar";
 import { navigation } from "./nav-config";
+import { navItemActive, useNavPending } from "./nav-pending";
 import { logoutAction } from "@/features/auth/actions";
 import { cn } from "@/lib/utils";
 import type { CurrentUser } from "@/lib/auth/current-user";
 
+function AlertCountBadge({ alertCount }: { alertCount: Promise<number> }) {
+  const count = use(alertCount);
+  if (count <= 0) return null;
+  return (
+    <span className="min-w-5 rounded-full bg-gold-bright px-1.5 py-0.5 text-center text-[9px] font-bold text-[#5a3500]">
+      {count}
+    </span>
+  );
+}
+
 export function Sidebar({
   user,
-  alertCount = 0,
+  alertCount,
   onNavigate,
 }: {
   user: CurrentUser;
-  alertCount?: number;
+  alertCount: Promise<number>;
   onNavigate?: () => void;
 }) {
   const t = useTranslations("nav");
   const tUsers = useTranslations("users");
   const tCommon = useTranslations("common");
-  const pathname = usePathname();
+  const { pathname, pendingHref, setPendingHref } = useNavPending();
 
   return (
     <div className="flex h-full flex-col bg-linear-to-b from-primary-deep to-primary">
       <div className="flex items-center gap-2.5 border-b border-white/10 px-3.5 py-4">
-        <Link href="/dashboard" onClick={onNavigate} className="flex items-center gap-2.5">
+        <Link
+          href="/dashboard"
+          onClick={() => {
+            if (pathname !== "/dashboard") setPendingHref("/dashboard");
+            onNavigate?.();
+          }}
+          className="flex items-center gap-2.5"
+        >
           <BrandMark />
           <div>
             <div className="text-[14.5px] font-bold leading-tight text-white">
@@ -47,13 +65,15 @@ export function Sidebar({
             <ul>
               {group.items.map((item) => {
                 const Icon = item.icon;
-                const active =
-                  pathname === item.href || pathname.startsWith(`${item.href}/`);
+                const active = navItemActive(pathname, item.href, pendingHref);
                 return (
                   <li key={item.href}>
                     <Link
                       href={item.href}
-                      onClick={onNavigate}
+                      onClick={() => {
+                        if (pathname !== item.href) setPendingHref(item.href);
+                        onNavigate?.();
+                      }}
                       className={cn(
                         "mb-px flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[12.5px] text-white/60 transition",
                         active
@@ -63,10 +83,10 @@ export function Sidebar({
                     >
                       <Icon className="size-4 shrink-0" />
                       <span className="flex-1">{t(item.key)}</span>
-                      {item.badge && alertCount > 0 ? (
-                        <span className="min-w-5 rounded-full bg-gold-bright px-1.5 py-0.5 text-center text-[9px] font-bold text-[#5a3500]">
-                          {alertCount}
-                        </span>
+                      {item.badge ? (
+                        <Suspense fallback={null}>
+                          <AlertCountBadge alertCount={alertCount} />
+                        </Suspense>
                       ) : null}
                     </Link>
                   </li>

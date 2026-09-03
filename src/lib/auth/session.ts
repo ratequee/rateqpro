@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { connection } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { SESSION_COOKIE, SESSION_TTL_MS } from "./constants";
+import { clearSessionCache, readSessionCache, writeSessionValidity } from "./session-cache";
 
 export function hashToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
@@ -53,25 +54,35 @@ export async function destroySession(): Promise<void> {
   const jar = await cookies();
   const token = jar.get(SESSION_COOKIE)?.value;
   if (token) {
+    const tokenHash = hashToken(token);
+    clearSessionCache(tokenHash);
     await prisma.session.deleteMany({
-      where: { tokenHash: hashToken(token) },
+      where: { tokenHash },
     });
   }
   jar.set(SESSION_COOKIE, "", sessionCookieOptions(new Date(0)));
 }
 
 export async function isValidSessionToken(token: string): Promise<boolean> {
+  const tokenHash = hashToken(token);
+  const cached = readSessionCache(tokenHash);
+  if (cached) {
+    return cached.valid;
+  }
+
   const session = await prisma.session.findUnique({
-    where: { tokenHash: hashToken(token) },
+    where: { tokenHash },
     select: {
       expiresAt: true,
       user: { select: { status: true } },
     },
   });
 
-  return Boolean(
+  const valid = Boolean(
     session && session.expiresAt > new Date() && session.user.status === "ACTIVE",
   );
+  writeSessionValidity(tokenHash, valid);
+  return valid;
 }
 
 export async function getSessionToken(): Promise<string | null> {
