@@ -98,7 +98,7 @@ export function ExpenseFormDialog({
       )}
       <div className="space-y-1.5">
         <Label htmlFor="exp-desc">{t("description")}</Label>
-        <Input id="exp-desc" name="description" required defaultValue={expense?.description} />
+        <Textarea id="exp-desc" name="description" required rows={3} defaultValue={expense?.description} />
       </div>
       <CurrencyInput
         id="exp-amount"

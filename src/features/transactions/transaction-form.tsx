@@ -155,11 +155,12 @@ export function TransactionForm({
       />
       <div className="space-y-2">
         <Label htmlFor="description">{t("description")}</Label>
-        <Input
+        <Textarea
           id="description"
           name="description"
           required
           minLength={2}
+          rows={3}
           value={description}
           onChange={(event) => setDescription(event.target.value)}
         />

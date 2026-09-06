@@ -31,22 +31,34 @@ const UNLABELED_DATE_PATTERNS = [
 ];
 
 const AMOUNT_TOKEN = "([0-9]{1,3}(?:,[0-9]{3})+(?:\\.[0-9]{1,2})?|[0-9]+(?:\\.[0-9]{1,2})?)";
+const DECIMAL_AMOUNT = "([0-9]{1,3}(?:,[0-9]{3})+\\.[0-9]{2}|[0-9]+\\.[0-9]{2})";
+const CURRENCY = "(?:\\$|QAR|QR|ر\\.?\\s*ق\\.?|Riyal)";
 
 const AMOUNT_PATTERNS = [
   new RegExp(
-    `(?:grand\\s*total|net\\s*(?:amount|total)|الإجمالي|المجموع)\s*[:#]?\\s*(?:QAR|QR|ر\\.?\\s*ق\\.?)?\\s*${AMOUNT_TOKEN}`,
+    `(?:grand\\s*total|net\\s*(?:amount|total)|الإجمالي|المجموع)\\s*[:#]?\\s*${CURRENCY}?\\s*${AMOUNT_TOKEN}`,
     "i",
   ),
-  new RegExp(`(?:total|amount|المبلغ)\\s*[:#]?\\s*(?:QAR|QR|ر\\.?\\s*ق\\.?)?\\s*${AMOUNT_TOKEN}`, "i"),
-  new RegExp(`(?:QAR|QR|ر\\.?\\s*ق\\.?|Riyal)\\s*[:#]?\\s*${AMOUNT_TOKEN}`, "i"),
+  new RegExp(`(?:total|amount|المبلغ)\\s*[:#]?\\s*${CURRENCY}\\s*${AMOUNT_TOKEN}`, "i"),
+  new RegExp(`(?:total|amount|المبلغ)\\s*[:#]?\\s*${DECIMAL_AMOUNT}`, "i"),
+  new RegExp(`${CURRENCY}\\s*[:#]?\\s*${AMOUNT_TOKEN}`, "i"),
   new RegExp(`${AMOUNT_TOKEN}\\s*(?:QAR|QR|ر\\.?\\s*ق\\.?)`, "i"),
 ];
 
 const INVOICE_NO_PATTERNS = [
-  /(?:bill\s*no\.?|billno|bill\s*#)\s*[:.\-–]?\s*([A-Z]{0,8}-?\d{3,})/i,
+  /(?:bill[o0]?|bill\s*no\.?|billno|bill\s*#)\s*[:.\-–]?\s*([A-Z]{0,8}-?\d{4,})/i,
   /(?:invoice\s*(?:no\.?|number|#)|inv(?:oice)?\s*(?:no\.?|#)?)\s*[:.\-–]?\s*([A-Z]{0,8}-?\d{3,})/i,
-  /(?:فاتورة|رقم(?:\s*الفاتورة)?)\s*[:.\-–]?\s*(\d{3,})/,
+  /(?:فاتورة|رقم(?:\s*الفاتورة)?)\s*[:.\-–]?\s*(\d{4,})/,
 ];
+
+const PRODUCT_HINT =
+  /\b(tile|tle|glue|spacer|cement|steel|paint|pipe|cable|brake|pedal|labor|labour|switch|socket|grout|primer|plaster|salina|sauna|makita|jotun)\b/i;
+const PRODUCT_SIZE = /\b\d+(?:\.\d+)?\s*(?:KG|MM|CM|M|LTR|PCS|PKT|PK|NOS?)\b/i;
+const MONEY = "\\d{1,3}(?:,\\d{3})*(?:\\.\\d{2})";
+const PACK_UNIT = "(?:PCS|PKT|BOX|NOS?|PK|DCS|PET|PRT|POS|PGS|PC)";
+const DONT_SPLIT_AND = /^(stand|brand|grand|island|thousand|band|land|hand|sand|demand|command|understand)$/i;
+const JUNK_ITEM =
+  /^(subtotal|sales\s*tax|tax(?:es)?|vat|total|grand\s*total|net\s*total|balance(?:\s*due)?|terms?(?:\s*&\s*conditions?)?|conditions?|payment(?:s)?(?:\s+is)?(?:\s+due)?.*|due\s+within.*|please\s+make.*|checks?\s+payable.*|signature|thank\s+you.*|bill\s+to|ship\s+to|receipt(?:\s*#)?|qty|description|unit\s*price|amount|note|notes)$/i;
 
 const RESERVED_INVOICE_TOKENS = /^(date|total|page|invoice|bill|qty|amount|description)$/i;
 
@@ -158,7 +170,7 @@ function isNoiseLine(line: string): boolean {
   const letters = (line.match(/\p{L}/gu) ?? []).length;
   if (letters < 3) return true;
   if (
-    /^(invoice|فاتورة|tax|total|date|التاريخ|page|qty|description|amount|unit|sn\.?|bill\s*no|customer|thank you)/i.test(
+    /^(invoice|فاتورة|tax|sales\s*tax|subtotal|total|date|التاريخ|page|qty|description|amount|unit|sn\.?|bill\s*no|customer|thank you|terms|payment)/i.test(
       line,
     )
   ) {
@@ -168,6 +180,57 @@ function isNoiseLine(line: string): boolean {
     return true;
   }
   return false;
+}
+
+function looksLikeJunkItem(line: string): boolean {
+  const normalized = line.replace(/[:.%$]+/g, " ").replace(/\s+/g, " ").trim();
+  if (JUNK_ITEM.test(normalized)) return true;
+  return /terms\s*&\s*conditions|payment(?:s)?\s+due|make\s+checks?\s+payable|due\s+within\s+\d+/i.test(
+    line,
+  );
+}
+
+function unglueCommonWords(line: string): string {
+  return line
+    .replace(/([A-Za-z]{4,})(and|of|the)\b/g, (all, prefix: string, word: string) => {
+      if (word.toLowerCase() === "and" && DONT_SPLIT_AND.test(`${prefix}${word}`)) return all;
+      if (word.toLowerCase() === "of" && /^(of|proof|roof)$/i.test(`${prefix}${word}`)) return all;
+      if (word.toLowerCase() === "the" && /^(the|lathe)$/i.test(`${prefix}${word}`)) return all;
+      return `${prefix} ${word}`;
+    })
+    .replace(/\bnewset\b/gi, "New set")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+function toDescriptionColumn(line: string): string {
+  return unglueCommonWords(
+    cleanOcrLine(line)
+      .replace(/^(?:sn|qty|description|item)\s*[:.\-–]?\s*/i, "")
+      .replace(/^\d{1,3}\s+(?=[A-Za-z\u0600-\u06FF])/u, "")
+      .replace(new RegExp(`\\s+\\d+(?:[.,]\\d+)?\\s+${PACK_UNIT}\\b.*$`, "i"), "")
+      .replace(new RegExp(`(?:\\s+(?:QAR|QR|USD|\\$)?\\s*${MONEY})+$`, "i"), "")
+      .replace(/\s+\d+[.,]\d{0,2}\s*ر\.?\s*ق\.?\s*$/i, "")
+      .replace(/\s+ر\.?\s*ق\.?\s*$/i, "")
+      .replace(/\s+\d+[.,]\d{1,2}[a-z]?(?:\s+\d+[.,]\d{2})?\s*[&]?\s*$/i, "")
+      .replace(/\s+[&]+\s*$/g, "")
+      .replace(/\s{2,}/g, " ")
+      .trim(),
+  );
+}
+
+function sanitizeLineItems(items: string[]): string[] {
+  const out: string[] = [];
+  for (const raw of items) {
+    for (const part of raw.split(/\s*,\s*/)) {
+      const name = toDescriptionColumn(part);
+      if (name.length < 4 || looksLikeJunkItem(name) || isNoiseLine(name)) continue;
+      if (/trading|international|customer|invoice/i.test(name) && !PRODUCT_HINT.test(name)) continue;
+      if (/\b(?:pcs|pkt|qty|unit price|amount)\b/i.test(name)) continue;
+      out.push(name);
+    }
+  }
+  return [...new Set(out)].slice(0, 8);
 }
 
 function guessVendor(text: string): string {
@@ -182,32 +245,57 @@ function guessVendor(text: string): string {
   return vendor.slice(0, 80);
 }
 
+function cleanProductLine(line: string): string {
+  return toDescriptionColumn(line);
+}
+
+function isProductLine(line: string): boolean {
+  if (line.length < 6 || looksLikeJunkItem(line)) return false;
+  if (/trading|lulu|لولو|international|customer|invoice|total|qatar|souq|shop/i.test(line)) {
+    return false;
+  }
+  return PRODUCT_HINT.test(line) || (PRODUCT_SIZE.test(line) && /[A-Za-z\u0600-\u06FF]{3,}/.test(line));
+}
+
 function guessLineItems(text: string): string[] {
   const items: string[] = [];
   let inTable = false;
   for (const raw of text.split(/\r?\n/)) {
     const line = cleanOcrLine(raw);
-    if (/description/i.test(line) && /qty|unit|amount|الوصف/i.test(line)) {
+    if (!line) continue;
+    if (/description|التفاصيل|الوصف/i.test(line) && /qty|unit|amount|الكمية/i.test(line)) {
       inTable = true;
       continue;
     }
-    if (!line || /grand\s*total|net\s*total|discount|thank you/i.test(line)) {
-      if (/total/i.test(line)) inTable = false;
+    if (
+      looksLikeJunkItem(line) ||
+      /grand\s*total|net\s*total|discount|thank you|sales\s*tax|^total\b|^subtotal\b/i.test(line)
+    ) {
+      if (/total|tax|terms|payment/i.test(line)) inTable = false;
+      continue;
+    }
+    const priced = line.match(
+      new RegExp(`^(?:(\\d{1,3})\\s+)?(.+?)\\s+(${MONEY})\\s+(${MONEY})\\s*$`),
+    );
+    if (priced?.[2] && !looksLikeJunkItem(priced[2])) {
+      items.push(priced[2].replace(/\s+/g, " ").trim());
       continue;
     }
     const numbered = line.match(
-      /^\d{1,3}\s+(.+?)\s+\d+(?:\.\d+)?\s+(?:PCS|PKT|KG|BOX|M|LTR|NOS?|PKT)\b/i,
+      new RegExp(`^\\d{1,3}\\s+(.+?)\\s+\\d+(?:\\.\\d+)?\\s+${PACK_UNIT}\\b`, "i"),
     );
     if (numbered?.[1] && !/trading|international|customer|invoice/i.test(numbered[1])) {
       items.push(numbered[1].replace(/\s+/g, " ").trim());
       continue;
     }
-    if (inTable && line.length >= 8 && !isNoiseLine(line) && !/trading|international/i.test(line)) {
-      const name = line.replace(/\s+\d+(?:\.\d+)?(?:\s+\d+(?:\.\d+)?){1,3}\s*$/, "").trim();
-      if (name.length >= 8) items.push(name);
+    if (isProductLine(line) || (inTable && line.length >= 8 && !isNoiseLine(line) && !looksLikeJunkItem(line))) {
+      const name = cleanProductLine(line);
+      if (name.length >= 4 && !looksLikeJunkItem(name) && !/trading|international/i.test(name)) {
+        items.push(name);
+      }
     }
   }
-  return [...new Set(items)].slice(0, 4);
+  return sanitizeLineItems(items);
 }
 
 function guessCategory(text: string, type: "DEPOSIT" | "WITHDRAWAL"): TransactionCategory {
@@ -230,14 +318,6 @@ function shortVendor(vendor: string): string {
     .replace(/\s{2,}/g, " ")
     .trim();
   return (english || vendor).slice(0, 60);
-}
-
-function looksLikeVendorDescription(description: string, vendor: string): boolean {
-  const d = description.toLowerCase().replace(/\s+/g, " ").trim();
-  const v = vendor.toLowerCase().replace(/\s+/g, " ").trim();
-  if (!d) return true;
-  if (v && (d === v || d.includes(v) || v.includes(d))) return true;
-  return /lulu|trading|لولو|شركة|مؤسسة/.test(d) && !/\b(tile|glue|cement|steel|paint|spacer|rent|salary)\b/i.test(d);
 }
 
 function extractCustomer(text: string): string {
@@ -327,21 +407,14 @@ export function invoiceExtractSchemaShape(value: unknown): InvoiceExtract | null
       ? invoiceNumberRaw.slice(0, 40)
       : "";
   const vendor = shortVendor(cleanOcrLine(String(row.vendor ?? "")));
-  const items = Array.isArray(row.items)
-    ? row.items.map((item) => cleanOcrLine(String(item))).filter((item) => item.length >= 4).slice(0, 6)
-    : [];
+  const itemsFromAi = Array.isArray(row.items) ? row.items.map((item) => String(item)) : [];
   const descriptionRaw = cleanOcrLine(String(row.description ?? ""));
-  const description = buildDescription(vendor, invoiceNumber, items.length > 0 ? items : []);
-  const finalDescription =
-    items.length > 0
-      ? description
-      : looksLikeVendorDescription(descriptionRaw, vendor)
-        ? buildDescription(vendor, invoiceNumber, [])
-        : descriptionRaw.slice(0, 240) || description;
+  const items = sanitizeLineItems(itemsFromAi.length > 0 ? itemsFromAi : [descriptionRaw]);
+  const description = buildDescription(vendor, invoiceNumber, items);
   return {
     date,
     amount: Number(amount).toFixed(2),
-    description: finalDescription,
+    description,
     type,
     category,
     notes: buildNotes({ vendor, invoiceNumber, items }).slice(0, 2000),
@@ -358,17 +431,15 @@ export function mergeInvoiceExtracts(
 ): InvoiceExtract | null {
   if (!primary) return secondary;
   if (!secondary) return primary;
-  const items =
-    (primary.items?.length ?? 0) > 0
-      ? primary.items ?? []
-      : secondary.items ?? [];
+  const fromItems = sanitizeLineItems([
+    ...(primary.items ?? []),
+    ...(secondary.items ?? []),
+    secondary.description,
+    primary.description,
+  ]);
   const vendor = shortVendor(primary.vendor || secondary.vendor);
   const invoiceNumber = primary.invoiceNumber || secondary.invoiceNumber;
-  const description = !looksLikeVendorDescription(secondary.description, vendor)
-    ? secondary.description
-    : !looksLikeVendorDescription(primary.description, vendor)
-      ? primary.description
-      : buildDescription(vendor, invoiceNumber, items);
+  const description = buildDescription(vendor, invoiceNumber, fromItems);
   return {
     date: primary.date || secondary.date,
     amount: primary.amount || secondary.amount,
@@ -378,12 +449,12 @@ export function mergeInvoiceExtracts(
     notes: buildNotes({
       vendor,
       invoiceNumber,
-      items: items.length > 0 ? items : description && !looksLikeVendorDescription(description, vendor) ? [description] : [],
+      items: fromItems,
       customer: extractCustomer(`${secondary.notes}\n${primary.notes}`),
     }).slice(0, 2000),
     vendor,
     invoiceNumber,
     confidence: Math.max(primary.confidence, secondary.confidence),
-    items,
+    items: fromItems,
   };
 }
