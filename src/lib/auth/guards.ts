@@ -26,3 +26,13 @@ export async function requirePermission(
   }
   return user;
 }
+
+export async function requireSuperAdmin(): Promise<CurrentUser> {
+  const user = await requireUser();
+  if (user.role !== "SUPER_ADMIN") {
+    const locale = await getLocale();
+    redirect({ href: "/dashboard", locale });
+    throw new Error("FORBIDDEN");
+  }
+  return user;
+}

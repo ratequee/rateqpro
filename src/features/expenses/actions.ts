@@ -18,6 +18,7 @@ function moduleForKind(kind: "PROJECT" | "OPERATING"): PermissionModule {
 
 async function touch() {
   await revalidateApp([
+    "/expenses",
     "/operating-expenses",
     "/project-expenses",
     "/reports",

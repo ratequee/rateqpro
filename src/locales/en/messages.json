@@ -340,6 +340,7 @@
     "expenseKind": "Expense type",
     "operatingExpense": "Operating expense (rent, salaries, utilities)",
     "projectExpense": "Project expense (materials, labor, site work)",
+    "selectProject": "Select a project",
     "noProject": "No project",
     "allProjects": "All projects",
     "allTypes": "All types",
@@ -412,7 +413,8 @@
     "pause": "Pause",
     "approve": "Approve",
     "reject": "Reject",
-    "cards": "Card movements"
+    "cards": "Card movements",
+    "teamRequests": "Team requests"
   },
   "payments": {
     "source": "Paid from",
@@ -437,7 +439,7 @@
     "addCard": "Add card",
     "accountName": "Account name",
     "bankName": "Bank name",
-    "accountNo": "Account number",
+    "accountNo": "IBAN",
     "setPrimary": "Set as primary account",
     "cardName": "Card name",
     "last4": "Last 4 digits",
@@ -481,11 +483,11 @@
     "credit": "Credit",
     "matched": "Matched",
     "notMatched": "Not in system",
-    "csvOnly": "CSV and Excel (.xlsx, .xls) are supported. PDF parsing will follow.",
+    "csvOnly": "PDF, Excel (.xlsx, .xls), and CSV are supported.",
     "selectFirst": "Select a bank first.",
-    "unsupported": "Unsupported format. Upload a CSV or Excel file.",
+    "unsupported": "Unsupported format. Upload a PDF, CSV, or Excel file.",
     "noTransactions": "No transactions found. Check the bank and column layout.",
-    "parseError": "Could not read that file. Try saving as CSV or .xlsx.",
+    "parseError": "Could not read that file. Try a clearer PDF, or save as CSV / Excel.",
     "accountNumber": "Account",
     "reference": "Reference",
     "balance": "Balance",
@@ -671,7 +673,10 @@
     "email": "Email",
     "joiningDate": "Joining date",
     "status": "Status",
-    "notes": "Notes"
+    "notes": "Notes",
+    "pendingApproval": "Waiting for Super Admin",
+    "awaitingAdmin": "Pending approval",
+    "needsApproval": "A Super Admin must approve this change before it is applied."
   },
   "assetsPage": {
     "title": "Assets & Custody",
@@ -778,6 +783,10 @@
     "record": "Record"
   },
   "expensesPage": {
+    "title": "Expenses",
+    "kind": "Expense type",
+    "operating": "Operational",
+    "projectKind": "Project",
     "operatingTitle": "Operating Expenses",
     "projectTitle": "Project Expenses",
     "add": "Add expense",
@@ -845,7 +854,7 @@
     "tabs": {
       "dashboard": "Dashboard",
       "approvals": "Approvals",
-      "transactions": "Expenses / bank transactions",
+      "transactions": "Bank transactions",
       "projects": "Projects",
       "contracts": "Contracts",
       "expenses": "Project expenses",
@@ -871,7 +880,7 @@
     },
     "tabHints": {
       "dashboard": "Home KPIs and runway.",
-      "approvals": "Approve or reject pending money movements.",
+      "approvals": "Approve or reject pending money movements and team requests.",
       "transactions": "Record deposits, withdrawals, and expenditures.",
       "projects": "Project values, payments, and files.",
       "contracts": "Contract records linked to projects.",
@@ -880,7 +889,7 @@
       "cashAdvances": "Money issued to staff as custody.",
       "creditCards": "Card balances and card charges.",
       "bankAccounts": "Bank and card accounts and their balances.",
-      "bankReader": "Upload bank CSV or Excel statements.",
+      "bankReader": "Upload bank PDF, CSV, or Excel statements.",
       "employees": "Employee records and documents.",
       "payroll": "Monthly salary register and project allocation.",
       "assets": "Vehicles, equipment, and custody lists.",

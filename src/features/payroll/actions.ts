@@ -9,9 +9,10 @@ import { periodMonthStart } from "@/lib/finance/payroll-period";
 import { payrollFormSchema } from "@/lib/validation/records";
 import { failState, okState, revalidateApp } from "@/features/records/helpers";
 import type { RecordActionState } from "@/features/records/state";
+import { initialRecordStatus } from "@/lib/finance/approval";
 
 async function touch() {
-  await revalidateApp(["/employees", "/payroll", "/dashboard"]);
+  await revalidateApp(["/employees", "/payroll", "/dashboard", "/approvals", "/salary"]);
 }
 
 export async function savePayrollAction(
@@ -47,6 +48,7 @@ export async function savePayrollAction(
     basicSalary: parsed.data.salary,
     notes: parsed.data.notes || null,
     userId: user.id,
+    status: initialRecordStatus(user.role),
   };
 
   try {

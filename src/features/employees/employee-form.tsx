@@ -13,8 +13,10 @@ import { saveEmployeeAction } from "./actions";
 export function EmployeeFormDialog({
   currencyCode,
   employee,
+  needsApproval = false,
 }: {
   currencyCode: string;
+  needsApproval?: boolean;
   employee?: {
     id: string;
     name: string;
@@ -24,6 +26,7 @@ export function EmployeeFormDialog({
     salary: string;
     status: "ACTIVE" | "INACTIVE";
     notes: string | null;
+    joiningDate?: string;
   };
 }) {
   const t = useTranslations("employeesPage");
@@ -39,6 +42,7 @@ export function EmployeeFormDialog({
       action={saveEmployeeAction}
     >
       {employee ? <input type="hidden" name="id" value={employee.id} /> : null}
+      {needsApproval ? <p className="text-xs text-muted-foreground">{t("needsApproval")}</p> : null}
       <div className="space-y-1.5">
         <Label htmlFor="emp-name">{t("name")}</Label>
         <Input id="emp-name" name="name" required defaultValue={employee?.name} />
@@ -67,7 +71,7 @@ export function EmployeeFormDialog({
       />
       <div className="space-y-1.5">
         <Label htmlFor="emp-join">{t("joiningDate")}</Label>
-        <Input id="emp-join" name="joiningDate" type="date" />
+        <Input id="emp-join" name="joiningDate" type="date" defaultValue={employee?.joiningDate ?? ""} />
       </div>
       <div className="space-y-1.5">
         <Label htmlFor="emp-status">{t("status")}</Label>

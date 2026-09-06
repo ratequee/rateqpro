@@ -9,8 +9,8 @@ export async function revalidateApp(paths: string[]): Promise<void> {
   }
 }
 
-export function okState(): RecordActionState {
-  return { ok: true, at: Date.now() };
+export function okState(extra?: Partial<RecordActionState>): RecordActionState {
+  return { ok: true, at: Date.now(), ...extra };
 }
 
 export function failState(): RecordActionState {

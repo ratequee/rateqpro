@@ -1,6 +1,8 @@
 import { getLocale, getTranslations } from "next-intl/server";
 import { Users } from "lucide-react";
 import { requireUser } from "@/lib/auth/guards";
+import { prisma } from "@/lib/db/prisma";
+import { companyScope } from "@/lib/db/tenant";
 import { getEmployeesWorkspace } from "@/lib/finance/workspace";
 import { formatAmount } from "@/lib/formatting/currency";
 import { PageHeader } from "@/components/ui/page-header";
@@ -21,8 +23,16 @@ export default async function EmployeesPage() {
   const user = await requireUser();
   const locale = await getLocale();
   const t = await getTranslations("employeesPage");
-  const { employees, payrolls, totalPayroll } = await getEmployeesWorkspace(user.companyId);
+  const [{ employees, payrolls, totalPayroll }, pendingRequests] = await Promise.all([
+    getEmployeesWorkspace(user.companyId),
+    prisma.approvalRequest.findMany({
+      where: { ...companyScope(user.companyId), module: "employees", status: "PENDING" },
+      orderBy: { createdAt: "desc" },
+      include: { requestedBy: { select: { name: true } } },
+    }),
+  ]);
   const active = employees.filter((item) => item.status === "ACTIVE").length;
+  const needsApproval = user.role !== "SUPER_ADMIN";
 
   return (
     <div className="flex flex-col gap-3.5">
@@ -31,7 +41,7 @@ export default async function EmployeesPage() {
         icon={Users}
         actions={
           <div className="flex gap-2">
-            <EmployeeFormDialog currencyCode={user.currencyCode} />
+            <EmployeeFormDialog currencyCode={user.currencyCode} needsApproval={needsApproval} />
             <PayrollFormDialog
               currencyCode={user.currencyCode}
               employees={employees.map((item) => ({ id: item.id, name: item.name }))}
@@ -55,6 +65,19 @@ export default async function EmployeesPage() {
           hint={user.currencyCode}
         />
       </section>
+      {pendingRequests.length > 0 ? (
+        <SectionCard title={t("pendingApproval")}>
+          {pendingRequests.map((item) => (
+            <div key={item.id} className="flex items-center justify-between gap-2 border-b border-muted py-2 text-[12.5px] last:border-0">
+              <div>
+                <div className="font-semibold">{item.summary}</div>
+                <div className="text-[11px] text-muted-foreground">{item.requestedBy.name}</div>
+              </div>
+              <span className="text-[11px] font-semibold text-warning">{t("awaitingAdmin")}</span>
+            </div>
+          ))}
+        </SectionCard>
+      ) : null}
       {employees.length === 0 ? (
         <EmptyState title={t("empty")} />
       ) : (
@@ -72,6 +95,7 @@ export default async function EmployeesPage() {
                 <div className="flex flex-col gap-1">
                   <EmployeeFormDialog
                     currencyCode={user.currencyCode}
+                    needsApproval={needsApproval}
                     employee={{
                       id: employee.id,
                       name: employee.name,
@@ -81,6 +105,7 @@ export default async function EmployeesPage() {
                       salary: serializeMoney(employee.salary),
                       status: employee.status,
                       notes: employee.notes,
+                      joiningDate: employee.joiningDate ? toDateInputValue(employee.joiningDate) : "",
                     }}
                   />
                   <DeleteRecordButton id={employee.id} action={deleteEmployeeAction} />

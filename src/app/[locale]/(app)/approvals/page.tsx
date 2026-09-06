@@ -13,10 +13,12 @@ import { ApprovalButtons } from "@/features/approvals/approval-buttons";
 import {
   approveBankTransactionAction,
   approveCardTransactionAction,
+  approveChangeRequestAction,
   approveExpenseAction,
   approvePayrollAction,
   rejectBankTransactionAction,
   rejectCardTransactionAction,
+  rejectChangeRequestAction,
   rejectExpenseAction,
   rejectPayrollAction,
 } from "@/features/approvals/actions";
@@ -26,7 +28,7 @@ export default async function ApprovalsPage() {
   const locale = await getLocale();
   const t = await getTranslations("approvals");
   const scope = { ...companyScope(user.companyId), status: "PENDING" as const };
-  const [transactions, cards, expenses, payrolls] = await Promise.all([
+  const [transactions, cards, expenses, payrolls, changeRequests] = await Promise.all([
     prisma.bankTransaction.findMany({
       where: scope,
       orderBy: { createdAt: "desc" },
@@ -49,6 +51,12 @@ export default async function ApprovalsPage() {
       take: 50,
       include: { employee: { select: { name: true } } },
     }),
+    prisma.approvalRequest.findMany({
+      where: { ...companyScope(user.companyId), status: "PENDING" },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+      include: { requestedBy: { select: { name: true } } },
+    }),
   ]);
 
   const total =
@@ -58,15 +66,15 @@ export default async function ApprovalsPage() {
     payrolls.reduce((sum, row) => sum + Number(row.salary.toString()), 0);
 
   const empty =
-    transactions.length + cards.length + expenses.length + payrolls.length === 0;
+    transactions.length + cards.length + expenses.length + payrolls.length + changeRequests.length === 0;
 
   return (
     <div className="flex flex-col gap-3.5">
       <PageHeader title={t("title")} icon={CheckCheck} />
-      <section className="grid grid-cols-2 gap-2.5 xl:grid-cols-4">
+      <section className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
         <KpiCard accent="warning" label={t("pendingExpenses")} value={String(expenses.length)} />
         <KpiCard accent="info" label={t("bankTransactions")} value={String(transactions.length + cards.length)} />
-        <KpiCard accent="none" label={t("payroll")} value={String(payrolls.length)} />
+        <KpiCard accent="none" label={t("teamRequests")} value={String(changeRequests.length + payrolls.length)} />
         <KpiCard
           accent="brand"
           label={t("totalAmount")}
@@ -140,6 +148,27 @@ export default async function ApprovalsPage() {
                       id={item.id}
                       approve={approveExpenseAction}
                       reject={rejectExpenseAction}
+                    />
+                  ) : null}
+                </div>
+              ))}
+            </SectionCard>
+          ) : null}
+          {changeRequests.length > 0 ? (
+            <SectionCard title={t("teamRequests")}>
+              {changeRequests.map((item) => (
+                <div key={item.id} className="flex items-center justify-between gap-2 border-b border-muted py-2.5 last:border-0">
+                  <div>
+                    <div className="text-[13px] font-bold">{item.summary}</div>
+                    <div className="text-[11px] text-muted-foreground">
+                      {item.requestedBy.name} · {item.action}
+                    </div>
+                  </div>
+                  {user.role === "SUPER_ADMIN" ? (
+                    <ApprovalButtons
+                      id={item.id}
+                      approve={approveChangeRequestAction}
+                      reject={rejectChangeRequestAction}
                     />
                   ) : null}
                 </div>

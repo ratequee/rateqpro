@@ -27,7 +27,7 @@ import {
   type ParsedStatementRow,
 } from "@/lib/finance/statement-parse";
 import { parseStatementWorkbook } from "./read-workbook";
-import { importBankStatementAction } from "./actions";
+import { importBankStatementAction, parseStatementPdfAction } from "./actions";
 
 const BANKS = [
   { code: "QIB", name: "QIB", short: "Qatar Islamic Bank", color: "bg-brand-soft text-primary" },
@@ -37,7 +37,7 @@ const BANKS = [
   { code: "MASRAF", name: "Masraf Al Rayan", short: "مصرف الريان", color: "bg-ok-bg text-success" },
 ] as const;
 
-const ACCEPTED_EXT = new Set(["csv", "xlsx", "xls"]);
+const ACCEPTED_EXT = new Set(["csv", "xlsx", "xls", "pdf"]);
 
 export function BankReader({
   accounts,
@@ -102,10 +102,21 @@ export function BankReader({
     setReading(true);
     setStep(3);
     try {
-      const parsed =
-        ext === "csv"
-          ? parseStatementCsv(await file.text(), bank)
-          : await parseStatementWorkbook(await file.arrayBuffer(), bank);
+      let parsed: ParsedStatementRow[] = [];
+      if (ext === "pdf") {
+        const formData = new FormData();
+        formData.set("file", file);
+        formData.set("bank", bank);
+        const result = await parseStatementPdfAction(formData);
+        if (result.error && result.rows.length === 0) {
+          throw new Error(result.error);
+        }
+        parsed = result.rows;
+      } else if (ext === "csv") {
+        parsed = parseStatementCsv(await file.text(), bank);
+      } else {
+        parsed = await parseStatementWorkbook(await file.arrayBuffer(), bank);
+      }
       if (parsed.length === 0) {
         setRows([]);
         setError(t("noTransactions"));
@@ -258,7 +269,7 @@ export function BankReader({
           <label className="flex cursor-pointer flex-col items-center rounded-[13px] border-2 border-dashed border-border bg-muted px-5 py-9 text-center hover:border-primary hover:bg-brand-soft">
             <input
               type="file"
-              accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+              accept=".csv,.xlsx,.xls,.pdf,text/csv,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
               className="hidden"
               onChange={(event) => {
                 void handleFile(event.target.files?.[0]);
@@ -290,7 +301,7 @@ export function BankReader({
       {rows.length > 0 ? (
         <>
           <SectionCard title={t("summary")}>
-            <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4">
+            <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 md:grid-cols-4">
               <KpiCard accent="success" label={t("deposits")} value={summary.deposits.toLocaleString()} hint="QAR" />
               <KpiCard accent="danger" label={t("withdrawals")} value={summary.withdrawals.toLocaleString()} hint="QAR" />
               <KpiCard accent="info" label={t("count")} value={String(summary.count)} />

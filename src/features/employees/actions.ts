@@ -8,6 +8,15 @@ import { fromDateInputValue } from "@/lib/formatting/date";
 import { employeeFormSchema } from "@/lib/validation/records";
 import { failState, nextCodedValue, okState, revalidateApp } from "@/features/records/helpers";
 import type { RecordActionState } from "@/features/records/state";
+import {
+  employeePayloadFromForm,
+  employeeRequestSummary,
+  queueApprovalRequest,
+} from "@/lib/finance/change-requests";
+
+async function touch() {
+  await revalidateApp(["/employees", "/payroll", "/dashboard", "/approvals"]);
+}
 
 export async function saveEmployeeAction(
   _prev: RecordActionState,
@@ -45,6 +54,28 @@ export async function saveEmployeeAction(
       status: parsed.data.status,
       notes: parsed.data.notes || null,
     };
+
+    if (user.role !== "SUPER_ADMIN") {
+      const action = parsed.data.id ? "UPDATE" : "CREATE";
+      if (parsed.data.id) {
+        const existing = await prisma.employee.findFirst({
+          where: { id: parsed.data.id, ...companyScope(user.companyId) },
+        });
+        if (!existing) return failState();
+      }
+      await queueApprovalRequest({
+        companyId: user.companyId,
+        userId: user.id,
+        module: "employees",
+        action,
+        targetId: parsed.data.id || null,
+        summary: employeeRequestSummary(action, parsed.data.name),
+        payload: employeePayloadFromForm(parsed.data),
+      });
+      await touch();
+      return okState({ pendingApproval: true });
+    }
+
     if (parsed.data.id) {
       const existing = await prisma.employee.findFirst({
         where: { id: parsed.data.id, ...companyScope(user.companyId) },
@@ -53,6 +84,14 @@ export async function saveEmployeeAction(
         return failState();
       }
       await prisma.employee.update({ where: { id: existing.id }, data });
+      await writeAuditLog({
+        companyId: user.companyId,
+        userId: user.id,
+        action: "update",
+        module: "employees",
+        recordId: existing.id,
+        newValue: { name: parsed.data.name, salary: parsed.data.salary },
+      });
     } else {
       const created = await prisma.employee.create({
         data: {
@@ -75,13 +114,32 @@ export async function saveEmployeeAction(
     return failState();
   }
 
-  await revalidateApp(["/employees", "/payroll", "/dashboard"]);
+  await touch();
   return okState();
 }
 
 export async function deleteEmployeeAction(formData: FormData): Promise<void> {
   const user = await requirePermission("employees", "delete");
   const id = String(formData.get("id") ?? "");
+  const existing = await prisma.employee.findFirst({
+    where: { id, ...companyScope(user.companyId) },
+  });
+  if (!existing) return;
+
+  if (user.role !== "SUPER_ADMIN") {
+    await queueApprovalRequest({
+      companyId: user.companyId,
+      userId: user.id,
+      module: "employees",
+      action: "DELETE",
+      targetId: existing.id,
+      summary: employeeRequestSummary("DELETE", existing.name),
+      payload: { name: existing.name },
+    });
+    await touch();
+    return;
+  }
+
   await prisma.$transaction([
     prisma.payroll.deleteMany({ where: { employeeId: id, ...companyScope(user.companyId) } }),
     prisma.employee.deleteMany({ where: { id, ...companyScope(user.companyId) } }),
@@ -93,5 +151,5 @@ export async function deleteEmployeeAction(formData: FormData): Promise<void> {
     module: "employees",
     recordId: id,
   });
-  await revalidateApp(["/employees", "/payroll", "/dashboard"]);
+  await touch();
 }

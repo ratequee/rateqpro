@@ -59,7 +59,7 @@ export default async function DashboardPage() {
         meta={<span className="text-xs text-muted-foreground">{today}</span>}
       />
 
-      <section className="grid grid-cols-2 gap-2.5 xl:grid-cols-4">
+      <section className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
         <KpiCard
           href="/bank-accounts"
           accent="brand"

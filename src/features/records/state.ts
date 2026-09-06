@@ -3,4 +3,5 @@ export type RecordActionState = {
   error?: boolean;
   at?: number;
   imported?: number;
+  pendingApproval?: boolean;
 };

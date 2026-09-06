@@ -365,6 +365,7 @@
     "expenseKind": "نوع المصروف",
     "operatingExpense": "مصروف تشغيلي (إيجار، رواتب، خدمات)",
     "projectExpense": "مصروف مشروع (مواد، عمالة، موقع)",
+    "selectProject": "اختر مشروعاً",
     "noProject": "بدون مشروع",
     "allProjects": "كل المشاريع",
     "allTypes": "كل الأنواع",
@@ -437,7 +438,8 @@
     "pause": "إيقاف",
     "approve": "اعتماد",
     "reject": "رفض",
-    "cards": "حركات البطاقات"
+    "cards": "حركات البطاقات",
+    "teamRequests": "طلبات الفريق"
   },
   "payments": {
     "source": "مصدر الدفع",
@@ -462,7 +464,7 @@
     "addCard": "إضافة بطاقة",
     "accountName": "اسم الحساب",
     "bankName": "اسم البنك",
-    "accountNo": "رقم الحساب",
+    "accountNo": "رقم الآيبان",
     "setPrimary": "تعيين كحساب رئيسي",
     "cardName": "اسم البطاقة",
     "last4": "آخر 4 أرقام",
@@ -506,11 +508,11 @@
     "credit": "دائن",
     "matched": "مطابقة",
     "notMatched": "غير مسجّلة",
-    "csvOnly": "صيغتا CSV و Excel ‏(.xlsx و .xls) مدعومتان. قراءة PDF ستتوفر لاحقاً.",
+    "csvOnly": "ملفات PDF و Excel ‏(.xlsx و .xls) و CSV مدعومة.",
     "selectFirst": "اختر البنك أولاً.",
-    "unsupported": "صيغة غير مدعومة. ارفع ملف CSV أو Excel.",
+    "unsupported": "صيغة غير مدعومة. ارفع ملف PDF أو CSV أو Excel.",
     "noTransactions": "لم يتم العثور على حركات. تحقق من البنك وتخطيط الأعمدة.",
-    "parseError": "تعذرت قراءة الملف. جرّب حفظه كـ CSV أو ‎.xlsx.",
+    "parseError": "تعذرت قراءة الملف. جرّب صورة PDF أوضح، أو احفظه كـ CSV / Excel.",
     "accountNumber": "الحساب",
     "reference": "المرجع",
     "balance": "الرصيد",
@@ -696,7 +698,10 @@
     "email": "البريد",
     "joiningDate": "تاريخ الالتحاق",
     "status": "الحالة",
-    "notes": "ملاحظات"
+    "notes": "ملاحظات",
+    "pendingApproval": "بانتظار اعتماد المدير الأعلى",
+    "awaitingAdmin": "بانتظار الاعتماد",
+    "needsApproval": "يجب أن يعتمد المدير الأعلى هذا التغيير قبل تطبيقه."
   },
   "assetsPage": {
     "title": "الأصول والعهدة",
@@ -778,6 +783,10 @@
     "record": "السجل"
   },
   "expensesPage": {
+    "title": "المصروفات",
+    "kind": "نوع المصروف",
+    "operating": "تشغيلي",
+    "projectKind": "مشروع",
     "operatingTitle": "المصروفات التشغيلية",
     "projectTitle": "مصروفات المشاريع",
     "add": "إضافة مصروف",
@@ -845,7 +854,7 @@
     "tabs": {
       "dashboard": "لوحة التحكم",
       "approvals": "الاعتمادات",
-      "transactions": "المصروفات / الحركات البنكية",
+      "transactions": "الحركات البنكية",
       "projects": "المشاريع",
       "contracts": "العقود",
       "expenses": "مصروفات المشروع",
@@ -871,7 +880,7 @@
     },
     "tabHints": {
       "dashboard": "مؤشرات الصفحة الرئيسية.",
-      "approvals": "اعتماد أو رفض الحركات المعلقة.",
+      "approvals": "اعتماد أو رفض الحركات المالية وطلبات الفريق المعلقة.",
       "transactions": "تسجيل الإيداعات والسحوبات والمصروفات.",
       "projects": "قيم المشاريع والدفعات والملفات.",
       "contracts": "عقود مرتبطة بالمشاريع.",
@@ -880,7 +889,7 @@
       "cashAdvances": "عهد نقدية للموظفين.",
       "creditCards": "أرصدة البطاقات والخصومات.",
       "bankAccounts": "الحسابات البنكية والبطاقات.",
-      "bankReader": "رفع كشوف CSV أو Excel.",
+      "bankReader": "رفع كشوف PDF أو CSV أو Excel.",
       "employees": "سجلات الموظفين والمستندات.",
       "payroll": "سجل الرواتب الشهري والتوزيع.",
       "assets": "المركبات والمعدات والعهد.",

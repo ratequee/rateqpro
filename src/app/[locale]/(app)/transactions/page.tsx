@@ -97,7 +97,7 @@ export default async function TransactionsPage({
         projects={projects}
       />
 
-      <div className="grid grid-cols-2 gap-2.5 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
         <KpiCard accent="success" label={t("totalDeposits")} value={money(result.totals.deposits)} />
         <KpiCard accent="danger" label={t("totalWithdrawals")} value={money(result.totals.withdrawals)} />
         <KpiCard accent="brand" label={t("netMovement")} value={money(result.totals.net)} />

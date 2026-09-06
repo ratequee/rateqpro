@@ -83,7 +83,10 @@ export function TransactionForm({
       transaction?.cashAdvanceId,
     ) ?? (accounts[0] ? `BANK_ACCOUNT:${accounts[0].id}` : "CASH"),
   );
-  const categories = useMemo(() => categoriesForType(type), [type]);
+  const categories = useMemo(
+    () => categoriesForType(type, type === "WITHDRAWAL" ? expenseKind : null),
+    [type, expenseKind],
+  );
 
   return (
     <form action={formAction} className="max-w-xl space-y-4">
@@ -130,10 +133,11 @@ export function TransactionForm({
           onChange={(event) => {
             const next = event.target.value as "DEPOSIT" | "WITHDRAWAL";
             setType(next);
-            const nextCategories = categoriesForType(next);
+            const nextCategories = categoriesForType(next, next === "WITHDRAWAL" ? expenseKind : null);
             if (!nextCategories.includes(category as TransactionCategory)) {
               setCategory(nextCategories[0]);
             }
+            if (next === "DEPOSIT") setProjectId("");
           }}
         >
           <option value="DEPOSIT">{t("deposit")}</option>
@@ -183,7 +187,15 @@ export function TransactionForm({
             id="expenseKind"
             name="expenseKind"
             value={expenseKind}
-            onChange={(event) => setExpenseKind(event.target.value as "PROJECT" | "OPERATING")}
+            onChange={(event) => {
+              const next = event.target.value as "PROJECT" | "OPERATING";
+              setExpenseKind(next);
+              const nextCategories = categoriesForType("WITHDRAWAL", next);
+              if (!nextCategories.includes(category as TransactionCategory)) {
+                setCategory(nextCategories[0]);
+              }
+              if (next !== "PROJECT") setProjectId("");
+            }}
           >
             <option value="OPERATING">{t("operatingExpense")}</option>
             <option value="PROJECT">{t("projectExpense")}</option>
@@ -192,22 +204,27 @@ export function TransactionForm({
       ) : (
         <input type="hidden" name="expenseKind" value="" />
       )}
-      <div className="space-y-2">
-        <Label htmlFor="projectId">{t("project")}</Label>
-        <NativeSelect
-          id="projectId"
-          name="projectId"
-          value={projectId}
-          onChange={(event) => setProjectId(event.target.value)}
-        >
-          <option value="">{t("noProject")}</option>
-          {projects.map((project) => (
-            <option key={project.id} value={project.id}>
-              {project.code} — {project.name}
-            </option>
-          ))}
-        </NativeSelect>
-      </div>
+      {type === "WITHDRAWAL" && expenseKind === "PROJECT" ? (
+        <div className="space-y-2">
+          <Label htmlFor="projectId">{t("project")}</Label>
+          <NativeSelect
+            id="projectId"
+            name="projectId"
+            required
+            value={projectId}
+            onChange={(event) => setProjectId(event.target.value)}
+          >
+            <option value="">{t("selectProject")}</option>
+            {projects.map((project) => (
+              <option key={project.id} value={project.id}>
+                {project.code} — {project.name}
+              </option>
+            ))}
+          </NativeSelect>
+        </div>
+      ) : (
+        <input type="hidden" name="projectId" value="" />
+      )}
       <PaymentSourceFields
         accounts={accounts}
         cards={cards}

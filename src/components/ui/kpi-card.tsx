@@ -30,10 +30,13 @@ export function KpiCard({
   valueClassName?: string;
   className?: string;
 }) {
+  const display =
+    typeof value === "string" ? value.replace(/\u00a0/g, " ").replace(/\u202f/g, " ") : value;
+
   const card = (
     <div
       className={cn(
-        "relative overflow-hidden rounded-[13px] border border-border bg-card px-[15px] py-[14px] transition",
+        "relative min-w-0 overflow-visible rounded-[13px] border border-border bg-card px-3 py-3.5 pe-3.5 sm:px-[15px] sm:py-[14px] transition",
         href && "hover:-translate-y-0.5 hover:shadow-hero",
         "after:absolute after:inset-y-0 after:start-0 after:w-[3.5px] after:rounded-s-[13px]",
         accents[accent],
@@ -43,18 +46,22 @@ export function KpiCard({
       <p className="mb-1.5 text-[10.5px] font-medium text-muted-foreground">{label}</p>
       <p
         className={cn(
-          "text-2xl font-bold leading-none tracking-tight text-foreground",
+          "min-w-0 max-w-full whitespace-normal break-words [overflow-wrap:anywhere] font-bold leading-tight tracking-tight text-foreground text-[clamp(0.92rem,2.6vw,1.45rem)] sm:text-[clamp(1rem,1.7vw,1.55rem)]",
           valueClassName,
         )}
       >
-        {value}
+        {display}
       </p>
       {hint ? <p className="mt-0.5 text-[10.5px] text-ink-light">{hint}</p> : null}
     </div>
   );
 
   if (href) {
-    return <Link href={href}>{card}</Link>;
+    return (
+      <Link href={href} className="block min-w-0">
+        {card}
+      </Link>
+    );
   }
 
   return card;

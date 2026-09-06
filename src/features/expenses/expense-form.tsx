@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,27 +11,16 @@ import { CurrencyInput } from "@/components/ui/currency-input";
 import { RecordFormDialog } from "@/features/records/form-dialog";
 import { saveExpenseAction } from "./actions";
 import { PaymentSourceFields } from "@/features/payments/source-fields";
-
-const PROJECT_CATEGORIES = [
-  "materials",
-  "subcontractors",
-  "labor",
-  "equipment",
-  "transportation",
-  "other",
-] as const;
-const OPERATING_CATEGORIES = [
-  "rent",
-  "salaries",
-  "vehicles",
-  "electricity",
-  "internet",
-  "marketing",
-  "other",
-] as const;
+import {
+  OPERATING_WITHDRAWAL_CATEGORIES,
+  PROJECT_WITHDRAWAL_CATEGORIES,
+} from "@/lib/finance/categories";
 
 export function ExpenseFormDialog({
-  kind,
+  kind: initialKind,
+  allowKindSwitch = false,
+  canOperating = true,
+  canProject = true,
   currencyCode,
   projects,
   accounts = [],
@@ -39,6 +29,9 @@ export function ExpenseFormDialog({
   expense,
 }: {
   kind: "PROJECT" | "OPERATING";
+  allowKindSwitch?: boolean;
+  canOperating?: boolean;
+  canProject?: boolean;
   currencyCode: string;
   projects?: Array<{ id: string; code: string; name: string }>;
   accounts?: Array<{ id: string; name: string; isPrimary?: boolean }>;
@@ -58,7 +51,8 @@ export function ExpenseFormDialog({
   const t = useTranslations("expensesPage");
   const tCat = useTranslations("transactions.categories");
   const tCommon = useTranslations("common");
-  const categories = kind === "PROJECT" ? PROJECT_CATEGORIES : OPERATING_CATEGORIES;
+  const [kind, setKind] = useState<"PROJECT" | "OPERATING">(initialKind);
+  const categories = kind === "PROJECT" ? PROJECT_WITHDRAWAL_CATEGORIES : OPERATING_WITHDRAWAL_CATEGORIES;
 
   return (
     <RecordFormDialog
@@ -71,7 +65,22 @@ export function ExpenseFormDialog({
       action={saveExpenseAction}
     >
       {expense ? <input type="hidden" name="id" value={expense.id} /> : null}
-      <input type="hidden" name="kind" value={kind} />
+      {allowKindSwitch && !expense ? (
+        <div className="space-y-1.5">
+          <Label htmlFor="exp-kind">{t("kind")}</Label>
+          <NativeSelect
+            id="exp-kind"
+            name="kind"
+            value={kind}
+            onChange={(event) => setKind(event.target.value as "PROJECT" | "OPERATING")}
+          >
+            {canOperating ? <option value="OPERATING">{t("operating")}</option> : null}
+            {canProject ? <option value="PROJECT">{t("projectKind")}</option> : null}
+          </NativeSelect>
+        </div>
+      ) : (
+        <input type="hidden" name="kind" value={kind} />
+      )}
       {kind === "PROJECT" ? (
         <div className="space-y-1.5">
           <Label htmlFor="exp-project">{t("project")}</Label>
@@ -84,7 +93,9 @@ export function ExpenseFormDialog({
             ))}
           </NativeSelect>
         </div>
-      ) : null}
+      ) : (
+        <input type="hidden" name="projectId" value="" />
+      )}
       <div className="space-y-1.5">
         <Label htmlFor="exp-desc">{t("description")}</Label>
         <Input id="exp-desc" name="description" required defaultValue={expense?.description} />
@@ -99,7 +110,16 @@ export function ExpenseFormDialog({
       />
       <div className="space-y-1.5">
         <Label htmlFor="exp-cat">{t("category")}</Label>
-        <NativeSelect id="exp-cat" name="category" defaultValue={expense?.category ?? categories[0]}>
+        <NativeSelect
+            id="exp-cat"
+            key={`${kind}-${expense?.id ?? "new"}`}
+            name="category"
+            defaultValue={
+              categories.includes(expense?.category as (typeof categories)[number])
+                ? expense?.category
+                : categories[0]
+            }
+          >
           {categories.map((item) => (
             <option key={item} value={item}>
               {tCat(item)}

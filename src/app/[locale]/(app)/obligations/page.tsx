@@ -48,7 +48,7 @@ export default async function ObligationsPage() {
         icon={ListChecks}
         actions={<ObligationFormDialog currencyCode={user.currencyCode} />}
       />
-      <section className="grid grid-cols-2 gap-2.5 xl:grid-cols-4">
+      <section className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
         <KpiCard
           accent="danger"
           label={t("total")}

@@ -145,12 +145,15 @@ const HEADER_ALIASES: Record<string, StatementField | "valueDate"> = {
   withdrawals: "debit",
   out: "debit",
   مدين: "debit",
+  سحب: "debit",
   credit: "credit",
   deposited: "credit",
   deposit: "credit",
   deposits: "credit",
   in: "credit",
   دائن: "credit",
+  إيداع: "credit",
+  ايداع: "credit",
   balance: "balance",
   runningbalance: "balance",
   closingbalance: "balance",
@@ -173,6 +176,18 @@ export function isBankCode(value: string): value is BankCode {
 export function statementTemplateCsv(bank: BankCode): string {
   const header = BANK_COLUMNS[bank].map((col) => col.value).join(",");
   return `${header}\n${TEMPLATE_SAMPLES[bank]}`;
+}
+
+export function parseStatementPdfText(text: string, bank: BankCode): ParsedStatementRow[] {
+  const lines = preparePdfLines(text);
+  const tableRows = lines
+    .map((line) => line.split(/\s{2,}|\t+/).map((part) => part.trim()).filter(Boolean))
+    .filter((row) => row.length >= 4);
+  if (detectColumns(tableRows)) {
+    const fromTable = parseStatementRows(tableRows, bank);
+    if (fromTable.length > 0) return fromTable;
+  }
+  return parsePdfLooseLines(lines, bank);
 }
 
 export function parseStatementCsv(text: string, bank: BankCode): ParsedStatementRow[] {
@@ -377,13 +392,185 @@ function parseOptionalAmount(value: unknown): number | null {
   if (typeof value === "number") {
     return Number.isFinite(value) ? Math.abs(value) : null;
   }
-  const raw = String(value).trim();
+  const raw = westernDigits(String(value).trim());
   if (!raw || raw === "-" || raw === "—" || raw === "–") return null;
-  const paren = /^\((.*)\)$/.exec(raw);
-  const text = (paren?.[1] ?? raw).replace(/,/g, "").replace(/[^\d.-]/g, "");
+  const withoutMark = raw.replace(/\s*(CR|DR|مدين|دائن)\s*$/i, "").trim();
+  const currencyFree = withoutMark.replace(/^(?:QAR|QR|ر\.?\s*ق\.?)\s*/i, "");
+  if (/[A-Za-z\u0600-\u06FF]/.test(currencyFree)) return null;
+  const paren = /^\((.*)\)$/.exec(currencyFree);
+  const text = (paren?.[1] ?? currencyFree)
+    .replace(/,/g, "")
+    .replace(/[^\d.-]/g, "");
   if (!text) return null;
   const amount = Number(text);
   return Number.isFinite(amount) ? Math.abs(amount) : null;
+}
+
+function westernDigits(value: string): string {
+  return value.replace(/[٠-٩]/g, (digit) => String("٠١٢٣٤٥٦٧٨٩".indexOf(digit)));
+}
+
+function normalizePdfText(text: string): string {
+  return westernDigits(text)
+    .replace(/\u00a0/g, " ")
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n{3,}/g, "\n\n");
+}
+
+function preparePdfLines(text: string): string[] {
+  const raw = normalizePdfText(text)
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const coalesced = coalescePdfLines(raw);
+  return coalesced.flatMap(splitLineOnDates).filter(Boolean);
+}
+
+function coalescePdfLines(lines: string[]): string[] {
+  const out: string[] = [];
+  let buffer = "";
+  for (const line of lines) {
+    if (PDF_DATE.test(line) && buffer) {
+      out.push(buffer);
+      buffer = line;
+    } else {
+      buffer = buffer ? `${buffer} ${line}` : line;
+    }
+  }
+  if (buffer) out.push(buffer);
+  return out;
+}
+
+function splitLineOnDates(line: string): string[] {
+  const matches = [...line.matchAll(PDF_DATE_GLOBAL)];
+  if (matches.length <= 1) return [line];
+  return matches.map((match, index) => {
+    const start = match.index ?? 0;
+    const end = matches[index + 1]?.index ?? line.length;
+    return line.slice(start, end).trim();
+  });
+}
+
+const PDF_DATE =
+  /(\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}|\d{4}-\d{2}-\d{2}|\d{1,2}-[A-Za-z]{3}-\d{2,4}|\d{1,2}\s+[A-Za-z]{3}\s+\d{2,4})\b/;
+const PDF_DATE_GLOBAL = new RegExp(PDF_DATE.source, "g");
+const TRAILING_AMOUNT =
+  /(?:^|\s)((?:(?:QAR|QR|ر\.?\s*ق\.?)\s*)?-?\(?(?:\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?|\d+\.\d{2}|\d{1,12})\)?(?:\s*(?:CR|DR|مدين|دائن))?)$/i;
+
+function takeTrailingAmounts(text: string): { tokens: string[]; rest: string } {
+  const tokens: string[] = [];
+  let rest = text.trim();
+  while (tokens.length < 3) {
+    const match = rest.match(TRAILING_AMOUNT);
+    const token = match?.[1]?.trim();
+    if (!match || !token) break;
+    tokens.unshift(token);
+    rest = rest.slice(0, rest.length - match[0].length).trim();
+  }
+  return { tokens, rest };
+}
+
+function parsePdfLooseLines(lines: string[], bank: BankCode): ParsedStatementRow[] {
+  const rows: ParsedStatementRow[] = [];
+  let pendingDesc = "";
+
+  for (const raw of lines) {
+    const line = raw.replace(/\s+/g, " ").trim();
+    const dateMatch = line.match(new RegExp(`^${PDF_DATE.source}`));
+    if (!dateMatch) {
+      if (rows.length > 0 && line.length > 3 && !isHeaderLike(line) && !/page|statement|account/i.test(line)) {
+        pendingDesc = pendingDesc ? `${pendingDesc} ${line}` : line;
+      }
+      continue;
+    }
+
+    const date = formatCellDate(dateMatch[1]);
+    if (!parseStatementDate(date)) continue;
+    const afterDate = line.slice(dateMatch[0].length).trim();
+    const { tokens, rest } = takeTrailingAmounts(afterDate);
+    if (tokens.length === 0) {
+      pendingDesc = afterDate;
+      continue;
+    }
+
+    const middle = `${pendingDesc} ${rest}`.replace(/\s+/g, " ").trim();
+    pendingDesc = "";
+    const signed = classifyPdfAmounts(tokens, middle, bank);
+    if (!signed.debit && !signed.credit) continue;
+    if (!middle && !signed.reference) continue;
+
+    rows.push({
+      date,
+      accountNumber: (middle.match(/\b\d{8,}\b/) ?? [])[0] ?? "",
+      desc: middle.replace(/\b\d{8,}\b/, "").replace(/\s+/g, " ").trim() || "Bank transaction",
+      reference: signed.reference,
+      debit: signed.debit,
+      credit: signed.credit,
+      balance: signed.balance,
+    });
+  }
+
+  return rows;
+}
+
+const PDF_CREDIT_HINT =
+  /\bincoming\b|\bdeposit(?:ed|s)?\b|\breceipt\b|\btransfer in\b|\bcredit\b|تحصيل|إيداع|ايداع/i;
+const PDF_DEBIT_HINT =
+  /\bsalar(?:y|ies)\b|\bpayroll\b|\bvendor\b|\bpayment\b|\bbill\b|\bwithdraw|\batm\b|\bfee\b|\bcharge\b|مدين|سحب|راتب|رواتب/i;
+
+function isPdfCreditContext(context: string): boolean {
+  if (PDF_DEBIT_HINT.test(context)) return false;
+  return PDF_CREDIT_HINT.test(context);
+}
+
+function classifyPdfAmounts(
+  tokens: string[],
+  context: string,
+  _bank: BankCode,
+): { debit: number; credit: number; balance: number | null; reference: string } {
+  const marked = tokens.map((token) => {
+    const upper = token.toUpperCase();
+    return {
+      amount: parseAmount(token),
+      credit: /CR|دائن|إيداع|ايداع/i.test(token),
+      debit: /DR|مدين|سحب/i.test(upper),
+    };
+  });
+  const numbers = marked.map((item) => item.amount).filter((item) => item > 0);
+  let debit = 0;
+  let credit = 0;
+  let balance: number | null = null;
+
+  if (marked.some((item) => item.credit || item.debit)) {
+    const unmarked = marked.filter((item) => !item.credit && !item.debit && item.amount > 0);
+    for (const item of marked) {
+      if (item.credit) credit = item.amount;
+      else if (item.debit) debit = item.amount;
+    }
+    if (unmarked.length > 0) {
+      balance = unmarked[unmarked.length - 1]!.amount;
+    }
+  } else if (numbers.length >= 3) {
+    debit = numbers[numbers.length - 3] ?? 0;
+    credit = numbers[numbers.length - 2] ?? 0;
+    balance = numbers[numbers.length - 1] ?? null;
+    if (debit > 0 && credit > 0 && debit !== credit) {
+      // keep both; one side is often 0 in real statements
+    } else if (debit > 0 && credit === 0) {
+      credit = 0;
+    }
+  } else if (numbers.length === 2) {
+    const [movement, running] = numbers;
+    balance = running ?? null;
+    if (isPdfCreditContext(context)) credit = movement ?? 0;
+    else debit = movement ?? 0;
+  } else if (numbers.length === 1) {
+    if (isPdfCreditContext(context)) credit = numbers[0] ?? 0;
+    else debit = numbers[0] ?? 0;
+  }
+
+  const reference = (context.match(/\b(?:REF|INV|TRX|FT|CHQ)[-/]?\w+\b/i) ?? [])[0] ?? "";
+  return { debit, credit, balance, reference };
 }
 
 function splitCsv(text: string): string[][] {

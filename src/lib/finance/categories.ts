@@ -37,10 +37,33 @@ export const WITHDRAWAL_CATEGORIES: TransactionCategory[] = [
   "other",
 ];
 
+export const PROJECT_WITHDRAWAL_CATEGORIES: TransactionCategory[] = [
+  "materials",
+  "subcontractors",
+  "labor",
+  "equipment",
+  "transportation",
+  "other",
+];
+
+export const OPERATING_WITHDRAWAL_CATEGORIES: TransactionCategory[] = [
+  "rent",
+  "salaries",
+  "vehicles",
+  "electricity",
+  "internet",
+  "marketing",
+  "other",
+];
+
 export function categoriesForType(
   type: "DEPOSIT" | "WITHDRAWAL",
+  expenseKind?: "PROJECT" | "OPERATING" | null,
 ): TransactionCategory[] {
-  return type === "DEPOSIT" ? DEPOSIT_CATEGORIES : WITHDRAWAL_CATEGORIES;
+  if (type === "DEPOSIT") return DEPOSIT_CATEGORIES;
+  if (expenseKind === "PROJECT") return PROJECT_WITHDRAWAL_CATEGORIES;
+  if (expenseKind === "OPERATING") return OPERATING_WITHDRAWAL_CATEGORIES;
+  return WITHDRAWAL_CATEGORIES;
 }
 
 export function isTransactionCategory(value: string): value is TransactionCategory {

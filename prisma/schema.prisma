@@ -123,6 +123,18 @@ enum ObligationStatus {
   COMPLETED
 }
 
+enum ApprovalRequestAction {
+  CREATE
+  UPDATE
+  DELETE
+}
+
+enum ApprovalRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 enum NotificationType {
   UPCOMING_OBLIGATION
   OVERDUE_OBLIGATION
@@ -192,6 +204,7 @@ model Company {
   documents               CompanyDocument[]
   employeeDocuments       EmployeeDocument[]
   projectPayments         ProjectPayment[]
+  approvalRequests        ApprovalRequest[]
 
   @@index([slug])
 }
@@ -220,6 +233,8 @@ model User {
   notifications       Notification[]
   notificationPref    UserNotificationPreference?
   permissionGrants    UserPermission[]
+  requestedApprovals  ApprovalRequest[] @relation("ApprovalRequestedBy")
+  reviewedApprovals   ApprovalRequest[] @relation("ApprovalReviewedBy")
 
   @@index([companyId])
   @@index([companyId, role])
@@ -713,6 +728,28 @@ model Attachment {
   createdAt  DateTime             @default(now())
 
   @@index([companyId, ownerType, ownerId])
+}
+
+model ApprovalRequest {
+  id            String                 @id @default(cuid())
+  companyId     String
+  company       Company                @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  module        String
+  action        ApprovalRequestAction
+  targetId      String?
+  summary       String
+  payload       Json
+  status        ApprovalRequestStatus  @default(PENDING)
+  requestedById String
+  requestedBy   User                   @relation("ApprovalRequestedBy", fields: [requestedById], references: [id], onDelete: Restrict)
+  reviewedById  String?
+  reviewedBy    User?                  @relation("ApprovalReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewedAt    DateTime?
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+
+  @@index([companyId, status])
+  @@index([requestedById])
 }
 
 model AuditLog {

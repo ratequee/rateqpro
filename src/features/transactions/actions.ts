@@ -34,6 +34,7 @@ function revalidateFinance(locale: string) {
   revalidatePath(`/${locale}/dashboard`);
   revalidatePath(`/${locale}/bank-accounts`);
   revalidatePath(`/${locale}/assets`);
+  revalidatePath(`/${locale}/expenses`);
   revalidatePath(`/${locale}/operating-expenses`);
   revalidatePath(`/${locale}/project-expenses`);
   revalidatePath(`/${locale}/reports`);
@@ -101,7 +102,12 @@ export async function createTransactionAction(
     return { error: "validation" };
   }
 
-  const allowed = categoriesForType(parsed.data.type);
+  const allowed = categoriesForType(
+    parsed.data.type,
+    parsed.data.type === "WITHDRAWAL" && parsed.data.expenseKind
+      ? parsed.data.expenseKind
+      : null,
+  );
   if (!allowed.includes(parsed.data.category)) {
     return { error: "validation", fieldError: "category" };
   }
@@ -136,7 +142,10 @@ export async function createTransactionAction(
       amount: parsed.data.amount,
       description: parsed.data.description,
       category: parsed.data.category,
-      projectId: parsed.data.projectId || null,
+      projectId:
+        parsed.data.type === "WITHDRAWAL" && parsed.data.expenseKind === "PROJECT"
+          ? parsed.data.projectId || null
+          : null,
       notes: parsed.data.notes || null,
       expenseKind:
         parsed.data.type === "WITHDRAWAL" && parsed.data.expenseKind
@@ -229,7 +238,12 @@ export async function updateTransactionAction(
     return { error: "validation" };
   }
 
-  const allowed = categoriesForType(parsed.data.type);
+  const allowed = categoriesForType(
+    parsed.data.type,
+    parsed.data.type === "WITHDRAWAL" && parsed.data.expenseKind
+      ? parsed.data.expenseKind
+      : null,
+  );
   if (!allowed.includes(parsed.data.category)) {
     return { error: "validation", fieldError: "category" };
   }
@@ -252,7 +266,10 @@ export async function updateTransactionAction(
       amount: parsed.data.amount,
       description: parsed.data.description,
       category: parsed.data.category,
-      projectId: parsed.data.projectId || null,
+      projectId:
+        parsed.data.type === "WITHDRAWAL" && parsed.data.expenseKind === "PROJECT"
+          ? parsed.data.projectId || null
+          : null,
       notes: parsed.data.notes || null,
       expenseKind:
         parsed.data.type === "WITHDRAWAL" && parsed.data.expenseKind

@@ -9,9 +9,17 @@ export const dynamic = "force-dynamic";
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const user = await requireUser();
   const scope = companyScope(user.companyId);
-  const alertCount = prisma.bankTransaction.count({
-    where: { ...scope, status: "PENDING" },
-  });
+  const alertCount = Promise.all([
+    prisma.bankTransaction.count({
+      where: { ...scope, status: "PENDING" },
+    }),
+    prisma.payroll.count({
+      where: { ...scope, status: "PENDING" },
+    }),
+    prisma.approvalRequest.count({
+      where: { ...scope, status: "PENDING" },
+    }),
+  ]).then((counts) => counts.reduce((sum, count) => sum + count, 0));
   const unreadAlerts = prisma.notification.count({
     where: { ...scope, readAt: null },
   });

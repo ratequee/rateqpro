@@ -58,7 +58,7 @@ export default async function SalaryPage() {
   return (
     <div className="flex flex-col gap-3.5">
       <PageHeader title={t("title")} icon={Wallet} />
-      <section className="grid grid-cols-2 gap-2.5 xl:grid-cols-3">
+      <section className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
         <KpiCard accent="success" label={t("totalSalaries")} value={formatAmount(net + deductions, locale)} hint="QAR" />
         <KpiCard accent="danger" label={t("totalDeductions")} value={formatAmount(deductions, locale)} hint="QAR" />
         <KpiCard accent="brand" label={t("netPayouts")} value={formatAmount(net, locale)} hint="QAR" />

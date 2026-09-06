@@ -51,7 +51,7 @@ export default async function CashFlowPage() {
         unit={t("title")}
         message={t("outstandingHint", { amount: formatAmount(outstanding, locale) })}
       />
-      <section className="grid grid-cols-2 gap-2.5 xl:grid-cols-4">
+      <section className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
         <KpiCard
           accent="brand"
           label={t("currentBalance")}

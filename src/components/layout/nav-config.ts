@@ -9,6 +9,7 @@ import {
   TrendingUp,
   Calculator,
   Wallet,
+  ArrowLeftRight,
   Contact,
   ClipboardList,
   Users,
@@ -26,6 +27,7 @@ export type NavItemKey =
   | "alerts"
   | "bankAccounts"
   | "bankReader"
+  | "transactions"
   | "expenses"
   | "obligations"
   | "cashFlow"
@@ -66,7 +68,8 @@ export const navigation: NavGroup[] = [
     items: [
       { href: "/bank-accounts", key: "bankAccounts", icon: Landmark },
       { href: "/bank-reader", key: "bankReader", icon: FileSpreadsheet },
-      { href: "/transactions", key: "expenses", icon: Receipt },
+      { href: "/transactions", key: "transactions", icon: ArrowLeftRight },
+      { href: "/expenses", key: "expenses", icon: Receipt },
       { href: "/obligations", key: "obligations", icon: ListChecks },
       { href: "/cash-flow", key: "cashFlow", icon: TrendingUp },
       { href: "/tax", key: "tax", icon: Calculator },
