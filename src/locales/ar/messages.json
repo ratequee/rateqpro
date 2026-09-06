@@ -785,6 +785,7 @@
   "expensesPage": {
     "title": "المصروفات",
     "kind": "نوع المصروف",
+    "all": "الكل",
     "operating": "تشغيلي",
     "projectKind": "مشروع",
     "operatingTitle": "المصروفات التشغيلية",

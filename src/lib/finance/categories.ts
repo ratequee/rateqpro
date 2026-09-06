@@ -69,3 +69,24 @@ export function categoriesForType(
 export function isTransactionCategory(value: string): value is TransactionCategory {
   return (TRANSACTION_CATEGORIES as readonly string[]).includes(value);
 }
+
+const PROJECT_ONLY_CATEGORIES = new Set<string>([
+  "materials",
+  "subcontractors",
+  "labor",
+  "equipment",
+  "transportation",
+]);
+
+export function inferredExpenseKind(row: {
+  expenseKind?: "PROJECT" | "OPERATING" | null;
+  projectId?: string | null;
+  category?: string | null;
+}): "PROJECT" | "OPERATING" {
+  if (row.expenseKind === "PROJECT" || row.expenseKind === "OPERATING") {
+    return row.expenseKind;
+  }
+  if (row.projectId) return "PROJECT";
+  if (row.category && PROJECT_ONLY_CATEGORIES.has(row.category)) return "PROJECT";
+  return "OPERATING";
+}

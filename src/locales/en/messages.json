@@ -785,6 +785,7 @@
   "expensesPage": {
     "title": "Expenses",
     "kind": "Expense type",
+    "all": "All",
     "operating": "Operational",
     "projectKind": "Project",
     "operatingTitle": "Operating Expenses",
