@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseInvoiceText } from "./invoice-parse";
+import { mergeInvoiceExtracts, parseInvoiceText } from "./invoice-parse";
 
 describe("parseInvoiceText", () => {
   it("extracts amount, date, vendor, and invoice number from a QAR invoice", () => {
@@ -58,9 +58,39 @@ describe("parseInvoiceText", () => {
     expect(result?.amount).toBe("330.00");
     expect(result?.invoiceNumber).toBe("28147");
     expect(result?.description.toLowerCase()).toContain("tile glue");
+    expect(result?.description.toLowerCase()).toContain("tile leveling");
     expect(result?.notes).toContain("Invoice #28147");
+    expect(result?.notes).toContain("TILE GLUE");
     expect(result?.notes).not.toContain("Invoice #Date");
     expect(result?.vendor.toLowerCase()).toMatch(/lulu|trading|لولو/);
     expect(result?.category).toBe("materials");
+  });
+
+  it("replaces a vendor-only AI description with parsed line items", () => {
+    const parsed = parseInvoiceText(`
+      LuLu TRADING
+      BillNo 28147
+      Date 01/09/2026
+      1 TILE GLUE SALINA 20 KG 20 PCS 14.50 290.00
+      2 TILE LEVELING SPACER 1MM 4 PKT 10.00 40.00
+      Grand Total 330.00
+    `);
+    const merged = mergeInvoiceExtracts(
+      {
+        date: "2026-09-01",
+        amount: "330.00",
+        description: "LuLu TRADING لولو للادوات الصحية والكهربائية",
+        type: "WITHDRAWAL",
+        category: "materials",
+        notes: "Vendor: LuLu TRADING لولو للادوات الصحية والكهربائية",
+        vendor: "LuLu TRADING لولو للادوات الصحية والكهربائية",
+        invoiceNumber: "",
+        confidence: 0.8,
+      },
+      parsed,
+    );
+    expect(merged?.description.toLowerCase()).toContain("tile glue");
+    expect(merged?.notes).toContain("Invoice #28147");
+    expect(merged?.vendor).toBe("LuLu TRADING");
   });
 });

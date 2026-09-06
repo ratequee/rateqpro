@@ -14,6 +14,7 @@ export type InvoiceExtract = {
   vendor: string;
   invoiceNumber: string;
   confidence: number;
+  items?: string[];
 };
 
 const LABELED_DATE_PATTERNS = [
@@ -223,15 +224,51 @@ function todayIso() {
   return `${now.getUTCFullYear()}-${pad(String(now.getUTCMonth() + 1))}-${pad(String(now.getUTCDate()))}`;
 }
 
+function shortVendor(vendor: string): string {
+  const english = vendor
+    .replace(/[\u0600-\u06FF].*$/g, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+  return (english || vendor).slice(0, 60);
+}
+
+function looksLikeVendorDescription(description: string, vendor: string): boolean {
+  const d = description.toLowerCase().replace(/\s+/g, " ").trim();
+  const v = vendor.toLowerCase().replace(/\s+/g, " ").trim();
+  if (!d) return true;
+  if (v && (d === v || d.includes(v) || v.includes(d))) return true;
+  return /lulu|trading|لولو|شركة|مؤسسة/.test(d) && !/\b(tile|glue|cement|steel|paint|spacer|rent|salary)\b/i.test(d);
+}
+
+function extractCustomer(text: string): string {
+  const match = text.match(/(?:customer(?:\s*name)?|client)\s*[:.\-–]?\s*([A-Z][A-Z0-9 &.'-]{3,})/i);
+  const value = cleanOcrLine(match?.[1] ?? "");
+  if (!value || /invoice|date|bill/i.test(value)) return "";
+  return value.slice(0, 80);
+}
+
 function buildDescription(vendor: string, invoiceNumber: string, items: string[]) {
-  if (items[0]) {
-    const extra = items.length > 1 ? ` + ${items.length - 1} more` : "";
-    return `${items[0]}${extra}`.slice(0, 240);
-  }
-  if (vendor && invoiceNumber) return `${vendor} · ${invoiceNumber}`.slice(0, 240);
-  if (vendor) return vendor.slice(0, 240);
+  if (items.length > 0) return items.join(", ").slice(0, 240);
+  if (vendor && invoiceNumber) return `${shortVendor(vendor)} · ${invoiceNumber}`.slice(0, 240);
+  if (vendor) return shortVendor(vendor);
   if (invoiceNumber) return `Invoice ${invoiceNumber}`;
   return "Invoice";
+}
+
+function buildNotes(input: {
+  vendor: string;
+  invoiceNumber: string;
+  items: string[];
+  customer?: string;
+}) {
+  return [
+    input.vendor && `Vendor: ${shortVendor(input.vendor)}`,
+    input.invoiceNumber && `Invoice #${input.invoiceNumber}`,
+    input.customer && `Customer: ${input.customer}`,
+    input.items.length > 0 ? `Items: ${input.items.join(", ")}` : null,
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 export function parseInvoiceText(text: string): InvoiceExtract | null {
@@ -247,15 +284,10 @@ export function parseInvoiceText(text: string): InvoiceExtract | null {
   const invoiceNumber = extractInvoiceNumber(cleaned);
   const vendor = guessVendor(cleaned);
   const items = guessLineItems(cleaned);
+  const customer = extractCustomer(cleaned);
   const category = guessCategory(`${cleaned} ${items.join(" ")}`, type);
   const description = buildDescription(vendor, invoiceNumber, items);
-  const notes = [
-    vendor && `Vendor: ${vendor}`,
-    invoiceNumber && `Invoice #${invoiceNumber}`,
-    items.length > 0 ? `Items: ${items.join(", ")}` : null,
-  ]
-    .filter(Boolean)
-    .join("\n");
+  const notes = buildNotes({ vendor, invoiceNumber, items, customer });
 
   let confidence = 0.45;
   if (extractDate(cleaned)) confidence += 0.2;
@@ -270,9 +302,10 @@ export function parseInvoiceText(text: string): InvoiceExtract | null {
     type,
     category,
     notes: notes.slice(0, 2000),
-    vendor,
+    vendor: shortVendor(vendor),
     invoiceNumber,
     confidence: Math.min(confidence, 0.95),
+    items,
   };
 }
 
@@ -293,21 +326,64 @@ export function invoiceExtractSchemaShape(value: unknown): InvoiceExtract | null
     invoiceNumberRaw && /\d/.test(invoiceNumberRaw) && !RESERVED_INVOICE_TOKENS.test(invoiceNumberRaw)
       ? invoiceNumberRaw.slice(0, 40)
       : "";
-  const vendor = cleanOcrLine(String(row.vendor ?? "")).slice(0, 80);
+  const vendor = shortVendor(cleanOcrLine(String(row.vendor ?? "")));
+  const items = Array.isArray(row.items)
+    ? row.items.map((item) => cleanOcrLine(String(item))).filter((item) => item.length >= 4).slice(0, 6)
+    : [];
   const descriptionRaw = cleanOcrLine(String(row.description ?? ""));
-  const notes = String(row.notes ?? "")
-    .replace(/Invoice\s*#\s*Date\b/gi, invoiceNumber ? `Invoice #${invoiceNumber}` : "")
-    .replace(/\s{2,}/g, " ")
-    .trim();
+  const description = buildDescription(vendor, invoiceNumber, items.length > 0 ? items : []);
+  const finalDescription =
+    items.length > 0
+      ? description
+      : looksLikeVendorDescription(descriptionRaw, vendor)
+        ? buildDescription(vendor, invoiceNumber, [])
+        : descriptionRaw.slice(0, 240) || description;
   return {
     date,
     amount: Number(amount).toFixed(2),
-    description: (descriptionRaw || vendor || (invoiceNumber ? `Invoice ${invoiceNumber}` : "Invoice")).slice(0, 240),
+    description: finalDescription,
     type,
     category,
-    notes: notes.slice(0, 2000),
+    notes: buildNotes({ vendor, invoiceNumber, items }).slice(0, 2000),
     vendor,
     invoiceNumber,
     confidence: Math.min(1, Math.max(0, Number(row.confidence ?? 0.7))),
+    items,
+  };
+}
+
+export function mergeInvoiceExtracts(
+  primary: InvoiceExtract | null,
+  secondary: InvoiceExtract | null,
+): InvoiceExtract | null {
+  if (!primary) return secondary;
+  if (!secondary) return primary;
+  const items =
+    (primary.items?.length ?? 0) > 0
+      ? primary.items ?? []
+      : secondary.items ?? [];
+  const vendor = shortVendor(primary.vendor || secondary.vendor);
+  const invoiceNumber = primary.invoiceNumber || secondary.invoiceNumber;
+  const description = !looksLikeVendorDescription(secondary.description, vendor)
+    ? secondary.description
+    : !looksLikeVendorDescription(primary.description, vendor)
+      ? primary.description
+      : buildDescription(vendor, invoiceNumber, items);
+  return {
+    date: primary.date || secondary.date,
+    amount: primary.amount || secondary.amount,
+    description,
+    type: primary.type,
+    category: primary.category === categoriesForType(primary.type)[0] ? secondary.category : primary.category,
+    notes: buildNotes({
+      vendor,
+      invoiceNumber,
+      items: items.length > 0 ? items : description && !looksLikeVendorDescription(description, vendor) ? [description] : [],
+      customer: extractCustomer(`${secondary.notes}\n${primary.notes}`),
+    }).slice(0, 2000),
+    vendor,
+    invoiceNumber,
+    confidence: Math.max(primary.confidence, secondary.confidence),
+    items,
   };
 }

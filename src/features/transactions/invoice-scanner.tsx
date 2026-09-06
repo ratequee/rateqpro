@@ -6,7 +6,7 @@ import { ScanSearch } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { parseInvoiceTextAction, scanInvoiceAction } from "./scan-invoice";
-import type { InvoiceExtract } from "@/lib/finance/invoice-parse";
+import { mergeInvoiceExtracts, type InvoiceExtract } from "@/lib/finance/invoice-parse";
 
 async function ocrImage(file: File): Promise<string> {
   const { createWorker, PSM } = await import("tesseract.js");
@@ -42,10 +42,12 @@ export function InvoiceScanner({
       const formData = new FormData();
       formData.set("invoice", file);
       let state = await scanInvoiceAction(formData);
-      if (!state.result && file.type.startsWith("image/")) {
+      if (file.type.startsWith("image/")) {
         setMessage(t("ocr"));
         const text = await ocrImage(file);
-        state = await parseInvoiceTextAction(text);
+        const fromText = await parseInvoiceTextAction(text);
+        const merged = mergeInvoiceExtracts(state.result ?? null, fromText.result ?? null);
+        state = merged ? { result: merged } : state;
       }
       if (!state.result) {
         setStatus("error");
