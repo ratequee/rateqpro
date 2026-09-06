@@ -36,4 +36,31 @@ describe("parseInvoiceText", () => {
   it("returns null when no amount can be found", () => {
     expect(parseInvoiceText("just a note without money")).toBeNull();
   });
+
+  it("reads a LuLu-style Qatar invoice even from noisy OCR", () => {
+    const text = `
+      6 Lu TRAD] NG © لولو للادوات الصحية والكهربائية nn
+      Shop No: 15 Building No.31 Souq Al Furjan
+      INVOICE
+      BillNo 28147
+      Date
+      01/09/2026
+      Customer Name SAAD INTERNATIONAL
+      SN DESCRIPTION QTY UNIT UNIT PRICE AMOUNT
+      1 TILE GLUE SALINA 20 KG 20 PCS 14.50 290.00
+      2 TILE LEVELING SPACER 1MM 4 PKT 10.00 40.00
+      Grand Total 330.00
+      Net Total 330.00
+    `;
+    const result = parseInvoiceText(text);
+    expect(result).not.toBeNull();
+    expect(result?.date).toBe("2026-09-01");
+    expect(result?.amount).toBe("330.00");
+    expect(result?.invoiceNumber).toBe("28147");
+    expect(result?.description.toLowerCase()).toContain("tile glue");
+    expect(result?.notes).toContain("Invoice #28147");
+    expect(result?.notes).not.toContain("Invoice #Date");
+    expect(result?.vendor.toLowerCase()).toMatch(/lulu|trading|لولو/);
+    expect(result?.category).toBe("materials");
+  });
 });

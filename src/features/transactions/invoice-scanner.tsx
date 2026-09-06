@@ -9,9 +9,13 @@ import { parseInvoiceTextAction, scanInvoiceAction } from "./scan-invoice";
 import type { InvoiceExtract } from "@/lib/finance/invoice-parse";
 
 async function ocrImage(file: File): Promise<string> {
-  const { createWorker } = await import("tesseract.js");
+  const { createWorker, PSM } = await import("tesseract.js");
   const worker = await createWorker("eng+ara");
   try {
+    await worker.setParameters({
+      tessedit_pageseg_mode: PSM.SINGLE_BLOCK,
+      preserve_interword_spaces: "1",
+    });
     const { data } = await worker.recognize(file);
     return data.text;
   } finally {

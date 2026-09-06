@@ -11,7 +11,13 @@ export async function extractInvoiceWithGemini(input: {
 
   const prompt = `Extract the main payable invoice fields as JSON only, no markdown.
 Keys: date (YYYY-MM-DD), amount (number string), description, type (DEPOSIT or WITHDRAWAL), category (one of project_payment, other_income, materials, subcontractors, labor, equipment, transportation, rent, salaries, vehicles, electricity, internet, marketing, other), notes, vendor, invoiceNumber, confidence (0-1).
-Most supplier invoices are WITHDRAWAL. Use DEPOSIT only if this is money received.`;
+Rules:
+- Qatar invoices use DD/MM/YYYY. Convert to YYYY-MM-DD. Read the printed Date / Bill date, not today's date.
+- invoiceNumber is Bill No / Invoice No and must contain a digit. Never use the word Date, Total, or Page.
+- vendor is the supplier name only (e.g. LuLu Trading). Do not include OCR junk, logos, addresses, or customer names.
+- description should be the main purchased items, not the raw header text.
+- amount is Grand Total / Net Total.
+- Most supplier invoices are WITHDRAWAL. Use DEPOSIT only if this is money received.`;
 
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(key)}`,
