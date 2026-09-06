@@ -243,28 +243,57 @@ export async function getReportsWorkspace(companyId: string) {
 }
 
 export async function getEmployeesWorkspace(companyId: string) {
-  const [employees, payrolls, snapshot] = await Promise.all([
+  const [employees, documentFiles, payrolls, snapshot] = await Promise.all([
     prisma.employee.findMany({
       where: { companyId },
       orderBy: { name: "asc" },
       include: {
-        documents: { orderBy: { createdAt: "desc" }, take: 8 },
+        documents: { orderBy: { createdAt: "desc" } },
       },
+    }),
+    prisma.attachment.findMany({
+      where: { companyId, ownerType: "EMPLOYEE_DOCUMENT" },
+      select: { id: true, ownerId: true, fileName: true },
     }),
     prisma.payroll.findMany({
       where: { companyId },
-      orderBy: { periodStart: "desc" },
-      take: 20,
+      orderBy: { updatedAt: "desc" },
       include: { employee: { select: { name: true } } },
     }),
     getCompanyFinancialSnapshot(companyId),
   ]);
 
+  const filesByDocument = new Map<string, Array<{ id: string; fileName: string }>>();
+  for (const file of documentFiles) {
+    const list = filesByDocument.get(file.ownerId) ?? [];
+    list.push({ id: file.id, fileName: file.fileName });
+    filesByDocument.set(file.ownerId, list);
+  }
+
+  const seenPayroll = new Set<string>();
+  const uniquePayrolls = payrolls.filter((row) => {
+    const key = `${row.employeeId}-${row.periodStart.toISOString().slice(0, 7)}`;
+    if (seenPayroll.has(key)) return false;
+    seenPayroll.add(key);
+    return true;
+  });
+
   const totalPayroll = employees
     .filter((item) => item.status === "ACTIVE")
     .reduce((sum, item) => sum + decimalToFils(item.salary), 0n);
 
-  return { employees, payrolls, totalPayroll, snapshot };
+  return {
+    employees: employees.map((employee) => ({
+      ...employee,
+      documents: employee.documents.map((doc) => ({
+        ...doc,
+        files: filesByDocument.get(doc.id) ?? [],
+      })),
+    })),
+    payrolls: uniquePayrolls,
+    totalPayroll,
+    snapshot,
+  };
 }
 
 export async function getAssetsWorkspace(companyId: string) {

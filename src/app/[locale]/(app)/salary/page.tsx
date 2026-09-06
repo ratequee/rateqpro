@@ -14,9 +14,14 @@ export default async function SalaryPage() {
   const user = await requirePermission("payroll", "view");
   const locale = await getLocale();
   const t = await getTranslations("salaryPage");
-  const [employees, projects, payrolls] = await Promise.all([
+  const [employees, clients, projects, payrolls] = await Promise.all([
     prisma.employee.findMany({
       where: { ...companyScope(user.companyId), status: "ACTIVE" },
+      orderBy: { name: "asc" },
+    }),
+    prisma.client.findMany({
+      where: companyScope(user.companyId),
+      select: { id: true, name: true },
       orderBy: { name: "asc" },
     }),
     prisma.project.findMany({
@@ -26,15 +31,27 @@ export default async function SalaryPage() {
     }),
     prisma.payroll.findMany({
       where: companyScope(user.companyId),
-      orderBy: { periodStart: "desc" },
+      orderBy: { updatedAt: "desc" },
       include: {
         employee: { select: { name: true, employeeNo: true, position: true } },
         allocations: true,
       },
     }),
   ]);
+  const serviceColumns = [
+    ...clients.map((item) => ({ key: `client:${item.id}`, label: item.name })),
+    ...projects.map((item) => ({ key: `project:${item.id}`, label: item.name })),
+    { key: "GENERAL", label: t("general") },
+  ];
 
-  const posted = payrolls.filter((row) => row.status === "POSTED");
+  const seen = new Set<string>();
+  const uniquePayrolls = payrolls.filter((row) => {
+    const key = `${row.employeeId}-${toDateInputValue(row.periodStart).slice(0, 7)}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  const posted = uniquePayrolls.filter((row) => row.status === "POSTED");
   const net = posted.reduce((sum, row) => sum + Number(row.salary.toString()), 0);
   const deductions = posted.reduce((sum, row) => sum + Number(row.deductions.toString()), 0);
 
@@ -55,8 +72,8 @@ export default async function SalaryPage() {
           position: item.position,
           salary: serializeMoney(item.salary),
         }))}
-        projects={projects}
-        payrolls={payrolls.map((row) => ({
+        serviceColumns={serviceColumns}
+        payrolls={uniquePayrolls.map((row) => ({
           id: row.id,
           employeeId: row.employeeId,
           employeeName: row.employee.name,
@@ -71,11 +88,18 @@ export default async function SalaryPage() {
           deductions: serializeMoney(row.deductions),
           net: serializeMoney(row.salary),
           status: row.status,
-          allocations: row.allocations.map((item) => ({
-            projectId: item.projectId,
-            amount: serializeMoney(item.amount),
-            isOperating: item.isOperating,
-          })),
+          services: Object.fromEntries(
+            row.allocations.map((item) => [
+              item.isOperating
+                ? "GENERAL"
+                : item.notes?.startsWith("client:") || item.notes?.startsWith("project:")
+                  ? item.notes
+                  : item.projectId
+                    ? `project:${item.projectId}`
+                    : "GENERAL",
+              serializeMoney(item.amount),
+            ]),
+          ),
         }))}
       />
     </div>

@@ -9,7 +9,7 @@ import { InitialsAvatar } from "@/components/ui/initials-avatar";
 import { EmptyState } from "@/components/ui/empty-state";
 import { SectionCard } from "@/components/ui/section-card";
 import { EmployeeFormDialog } from "@/features/employees/employee-form";
-import { EmployeeDocumentDialog } from "@/features/employees/document-form";
+import { EmployeeDocumentDialog, EmployeeDocumentList } from "@/features/employees/document-form";
 import { DeleteRecordButton } from "@/features/records/delete-button";
 import { deleteEmployeeAction } from "@/features/employees/actions";
 import { PayrollFormDialog } from "@/features/payroll/payroll-form";
@@ -92,15 +92,12 @@ export default async function EmployeesPage() {
                   {formatAmount(employee.salary.toString(), locale)} {user.currencyCode}
                 </span>
               </div>
-              <div className="mt-2 space-y-1">
-                {employee.documents.map((doc) => (
-                  <div key={doc.id} className="text-[11px] text-muted-foreground">
-                    {doc.name}
-                    {doc.expiryDate
-                      ? ` · ${formatDate(doc.expiryDate, user.dateFormat, locale)}`
-                      : ""}
-                  </div>
-                ))}
+              <div className="mt-2 space-y-2">
+                <EmployeeDocumentList
+                  documents={employee.documents}
+                  dateFormat={user.dateFormat}
+                  locale={locale}
+                />
                 <EmployeeDocumentDialog employeeId={employee.id} />
               </div>
             </div>
@@ -113,7 +110,18 @@ export default async function EmployeesPage() {
         ) : (
           payrolls.map((row) => (
             <div key={row.id} className="flex items-center justify-between gap-2 border-b border-muted py-2 text-[12.5px] last:border-0">
-              <span className="font-semibold">{row.employee.name}</span>
+              <div className="min-w-0">
+                <div className="font-semibold">{row.employee.name}</div>
+                <div className="text-[11px] text-muted-foreground">
+                  {formatDate(row.periodStart, user.dateFormat, locale)}
+                  {Number(row.foodAllowance.toString()) > 0
+                    ? ` · ${t("food")} ${serializeMoney(row.foodAllowance)}`
+                    : ""}
+                  {Number(row.accommodationAllowance.toString()) > 0
+                    ? ` · ${t("accommodation")} ${serializeMoney(row.accommodationAllowance)}`
+                    : ""}
+                </div>
+              </div>
               <span className="font-bold text-primary">
                 {formatAmount(row.salary.toString(), locale)} {user.currencyCode}
               </span>

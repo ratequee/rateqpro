@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db/prisma";
 import { companyScope } from "@/lib/db/tenant";
 import { writeAuditLog } from "@/lib/audit/write";
 import { fromDateInputValue } from "@/lib/formatting/date";
+import { periodMonthStart } from "@/lib/finance/payroll-period";
 import { payrollFormSchema } from "@/lib/validation/records";
 import { failState, okState, revalidateApp } from "@/features/records/helpers";
 import type { RecordActionState } from "@/features/records/state";
@@ -37,20 +38,41 @@ export async function savePayrollAction(
     return failState();
   }
 
+  const periodStart = periodMonthStart(fromDateInputValue(parsed.data.periodStart));
   const data = {
     employeeId: employee.id,
-    periodStart: fromDateInputValue(parsed.data.periodStart),
+    periodStart,
     periodEnd: fromDateInputValue(parsed.data.periodEnd),
     salary: parsed.data.salary,
+    basicSalary: parsed.data.salary,
     notes: parsed.data.notes || null,
     userId: user.id,
   };
 
   try {
-    if (parsed.data.id) {
-      await prisma.payroll.updateMany({
-        where: { id: parsed.data.id, ...companyScope(user.companyId) },
-        data,
+    const existing =
+      (parsed.data.id
+        ? await prisma.payroll.findFirst({
+            where: { id: parsed.data.id, ...companyScope(user.companyId) },
+          })
+        : null) ??
+      (await prisma.payroll.findFirst({
+        where: {
+          ...companyScope(user.companyId),
+          employeeId: employee.id,
+          periodStart,
+        },
+      }));
+
+    if (existing) {
+      await prisma.payroll.update({ where: { id: existing.id }, data });
+      await prisma.payroll.deleteMany({
+        where: {
+          ...companyScope(user.companyId),
+          employeeId: employee.id,
+          periodStart,
+          id: { not: existing.id },
+        },
       });
     } else {
       const created = await prisma.payroll.create({

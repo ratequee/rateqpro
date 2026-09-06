@@ -18,6 +18,8 @@ type Employee = {
   salary: string;
 };
 
+type ServiceColumn = { key: string; label: string };
+
 type PayrollRow = {
   id: string;
   employeeId: string;
@@ -33,30 +35,36 @@ type PayrollRow = {
   deductions: string;
   net: string;
   status: string;
-  allocations: Array<{ projectId: string | null; amount: string; isOperating: boolean }>;
+  services: Record<string, string>;
 };
 
 export function SalaryBoard({
   currencyCode,
   employees,
-  projects,
+  serviceColumns,
   payrolls,
 }: {
   currencyCode: string;
   employees: Employee[];
-  projects: Array<{ id: string; name: string; code: string }>;
+  serviceColumns: ServiceColumn[];
   payrolls: PayrollRow[];
 }) {
   const t = useTranslations("salaryPage");
-  const [periodStart, setPeriodStart] = useState(payrolls[0]?.periodStart ?? todayInputValue().slice(0, 8) + "01");
+  const [periodStart, setPeriodStart] = useState(payrolls[0]?.periodStart ?? `${todayInputValue().slice(0, 8)}01`);
   const [periodEnd, setPeriodEnd] = useState(payrolls[0]?.periodEnd ?? todayInputValue());
 
   const rows = useMemo(() => {
+    const month = periodStart.slice(0, 7);
     return employees.map((employee, index) => {
-      const existing = payrolls.find((row) => row.employeeId === employee.id && row.periodStart === periodStart);
+      const existing = payrolls.find(
+        (row) => row.employeeId === employee.id && row.periodStart.slice(0, 7) === month,
+      );
       return { index: index + 1, employee, existing };
     });
   }, [employees, payrolls, periodStart]);
+
+  const registerTemplate = `50px 140px 90px 110px 90px 90px 90px 90px 90px ${serviceColumns.map(() => "110px").join(" ")} 90px 80px`;
+  const allocTemplate = `160px 90px ${serviceColumns.map(() => "110px").join(" ")}`;
 
   return (
     <div className="space-y-3">
@@ -76,8 +84,11 @@ export function SalaryBoard({
           <TabsTrigger value="allocation">{t("allocationTab")}</TabsTrigger>
         </TabsList>
         <TabsContent value="register">
-          <HorizontalScroll minWidth="1100px" className="rounded-[13px] border border-border bg-card">
-            <div className="grid grid-cols-[50px_140px_90px_110px_90px_90px_90px_90px_90px_90px_80px] bg-muted px-3 py-2 text-[11px] font-semibold text-muted-foreground">
+          <HorizontalScroll minWidth={`${1100 + serviceColumns.length * 110}px`} className="rounded-[13px] border border-border bg-card">
+            <div
+              className="grid bg-muted px-3 py-2 text-[11px] font-semibold text-muted-foreground"
+              style={{ gridTemplateColumns: registerTemplate }}
+            >
               <span>{t("serial")}</span>
               <span>{t("employeeName")}</span>
               <span>{t("employeeId")}</span>
@@ -87,13 +98,17 @@ export function SalaryBoard({
               <span>{t("accommodation")}</span>
               <span>{t("overtime")}</span>
               <span>{t("deductions")}</span>
+              {serviceColumns.map((column) => (
+                <span key={column.key}>{column.label}</span>
+              ))}
               <span>{t("net")}</span>
               <span />
             </div>
             {rows.map(({ index, employee, existing }) => (
               <div
                 key={employee.id}
-                className="grid grid-cols-[50px_140px_90px_110px_90px_90px_90px_90px_90px_90px_80px] items-center border-t border-muted px-3 py-2 text-[12px]"
+                className="grid items-center border-t border-muted px-3 py-2 text-[12px]"
+                style={{ gridTemplateColumns: registerTemplate }}
               >
                 <span>{index}</span>
                 <span className="rounded bg-wn-bg px-1.5 py-0.5 font-semibold">{employee.name}</span>
@@ -104,6 +119,9 @@ export function SalaryBoard({
                 <span>{existing?.accommodationAllowance ?? "0"}</span>
                 <span>{existing?.overtime ?? "0"}</span>
                 <span>{existing?.deductions ?? "0"}</span>
+                {serviceColumns.map((column) => (
+                  <span key={column.key}>{existing?.services[column.key] ?? "0"}</span>
+                ))}
                 <span className="rounded bg-orange-100 px-1.5 font-bold text-orange-900 dark:bg-orange-950 dark:text-orange-100">
                   {existing?.net ?? employee.salary}
                 </span>
@@ -113,40 +131,35 @@ export function SalaryBoard({
                   existing={existing}
                   periodStart={periodStart}
                   periodEnd={periodEnd}
-                  projects={projects}
+                  serviceColumns={serviceColumns}
                 />
               </div>
             ))}
           </HorizontalScroll>
         </TabsContent>
         <TabsContent value="allocation">
-          <HorizontalScroll minWidth={`${900 + projects.length * 110}px`} className="rounded-[13px] border border-border bg-card">
+          <HorizontalScroll minWidth={`${400 + serviceColumns.length * 110}px`} className="rounded-[13px] border border-border bg-card">
             <div
               className="grid bg-muted px-3 py-2 text-[11px] font-semibold text-muted-foreground"
-              style={{ gridTemplateColumns: `160px 90px repeat(${projects.length + 1}, 110px)` }}
+              style={{ gridTemplateColumns: allocTemplate }}
             >
               <span>{t("employeeName")}</span>
               <span>{t("net")}</span>
-              {projects.map((project) => (
-                <span key={project.id}>{project.name}</span>
+              {serviceColumns.map((column) => (
+                <span key={column.key}>{column.label}</span>
               ))}
-              <span>{t("general")}</span>
             </div>
             {rows.map(({ employee, existing }) => (
               <div
                 key={employee.id}
                 className="grid items-center border-t border-muted px-3 py-2 text-[12px]"
-                style={{ gridTemplateColumns: `160px 90px repeat(${projects.length + 1}, 110px)` }}
+                style={{ gridTemplateColumns: allocTemplate }}
               >
                 <span className="font-semibold">{employee.name}</span>
                 <span>{existing?.net ?? employee.salary}</span>
-                {projects.map((project) => {
-                  const alloc = existing?.allocations.find((item) => item.projectId === project.id);
-                  return <span key={project.id}>{alloc?.amount ?? "0"}</span>;
-                })}
-                <span>
-                  {existing?.allocations.find((item) => item.isOperating)?.amount ?? "0"}
-                </span>
+                {serviceColumns.map((column) => (
+                  <span key={column.key}>{existing?.services[column.key] ?? "0"}</span>
+                ))}
               </div>
             ))}
           </HorizontalScroll>
@@ -162,14 +175,14 @@ function SalaryRowDialog({
   existing,
   periodStart,
   periodEnd,
-  projects,
+  serviceColumns,
 }: {
   currencyCode: string;
   employee: Employee;
   existing?: PayrollRow;
   periodStart: string;
   periodEnd: string;
-  projects: Array<{ id: string; name: string; code: string }>;
+  serviceColumns: ServiceColumn[];
 }) {
   const t = useTranslations("salaryPage");
   const tCommon = useTranslations("common");
@@ -187,60 +200,38 @@ function SalaryRowDialog({
       <input type="hidden" name="employeeId" value={employee.id} />
       <input type="hidden" name="periodStart" value={periodStart} />
       <input type="hidden" name="periodEnd" value={periodEnd} />
-      <Input name="basicSalary" defaultValue={existing?.basicSalary ?? employee.salary} />
-      <label className="text-xs">{t("food")}<Input name="foodAllowance" defaultValue={existing?.foodAllowance ?? "0"} /></label>
-      <label className="text-xs">{t("accommodation")}<Input name="accommodationAllowance" defaultValue={existing?.accommodationAllowance ?? "0"} /></label>
-      <label className="text-xs">{t("overtime")}<Input name="overtime" defaultValue={existing?.overtime ?? "0"} /></label>
-      <label className="text-xs">{t("deductions")}<Input name="deductions" defaultValue={existing?.deductions ?? "0"} /></label>
-      <p className="text-[11px] text-muted-foreground">{t("allocationHint")} · {currencyCode}</p>
-      {projects.map((project) => (
-        <label key={project.id} className="text-xs">
-          {project.name}
+      <label className="text-xs">
+        {t("basic")}
+        <Input name="basicSalary" defaultValue={existing?.basicSalary ?? employee.salary} />
+      </label>
+      <label className="text-xs">
+        {t("food")}
+        <Input name="foodAllowance" defaultValue={existing?.foodAllowance ?? "0"} />
+      </label>
+      <label className="text-xs">
+        {t("accommodation")}
+        <Input name="accommodationAllowance" defaultValue={existing?.accommodationAllowance ?? "0"} />
+      </label>
+      <label className="text-xs">
+        {t("overtime")}
+        <Input name="overtime" defaultValue={existing?.overtime ?? "0"} />
+      </label>
+      <label className="text-xs">
+        {t("deductions")}
+        <Input name="deductions" defaultValue={existing?.deductions ?? "0"} />
+      </label>
+      <p className="text-[11px] text-muted-foreground">
+        {t("allocationHint")} · {currencyCode}
+      </p>
+      {serviceColumns.map((column) => (
+        <label key={column.key} className="text-xs">
+          {column.label}
           <Input
-            name={`alloc-${project.id}`}
-            defaultValue={existing?.allocations.find((item) => item.projectId === project.id)?.amount ?? "0"}
+            name={column.key === "GENERAL" ? "alloc-GENERAL" : `service-${column.key}`}
+            defaultValue={existing?.services[column.key] ?? "0"}
           />
         </label>
       ))}
-      <label className="text-xs">
-        {t("general")}
-        <Input
-          name="alloc-GENERAL"
-          defaultValue={existing?.allocations.find((item) => item.isOperating)?.amount ?? "0"}
-        />
-      </label>
-      <AllocationsCollector projectIds={projects.map((item) => item.id)} />
     </RecordFormDialog>
-  );
-}
-
-function AllocationsCollector({ projectIds }: { projectIds: string[] }) {
-  return (
-    <input
-      type="hidden"
-      name="allocations"
-      value=""
-      ref={(node) => {
-        if (!node) return;
-        const form = node.form;
-        if (!form) return;
-        const sync = () => {
-          const rows = [
-            ...projectIds.map((id) => ({
-              projectId: id,
-              amount: String(new FormData(form).get(`alloc-${id}`) ?? "0"),
-              isOperating: false,
-            })),
-            {
-              projectId: null,
-              amount: String(new FormData(form).get("alloc-GENERAL") ?? "0"),
-              isOperating: true,
-            },
-          ];
-          node.value = JSON.stringify(rows);
-        };
-        form.addEventListener("submit", sync);
-      }}
-    />
   );
 }

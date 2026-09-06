@@ -662,6 +662,8 @@
     "salary": "Salary",
     "empty": "No employees yet.",
     "payrollEmpty": "No payroll records yet.",
+    "food": "Food",
+    "accommodation": "Accommodation",
     "add": "Add employee",
     "name": "Full name",
     "position": "Position",
@@ -803,7 +805,7 @@
     "totalDeductions": "Total deductions",
     "netPayouts": "Net payouts",
     "registerTab": "Salary register",
-    "allocationTab": "Project allocation",
+    "allocationTab": "Client / service work",
     "periodStart": "Period start",
     "periodEnd": "Period end",
     "serial": "S.No",
@@ -818,7 +820,7 @@
     "net": "Net salary",
     "general": "GENERAL",
     "editRow": "Edit salary row",
-    "allocationHint": "Split the net salary across projects. GENERAL is operating overhead."
+    "allocationHint": "Amounts for each client or service add to the net salary, together with food and accommodation. GENERAL is extra company work."
   },
   "employeeDocs": {
     "add": "Add document",
@@ -828,7 +830,10 @@
     "expiring": "Document with expiry date",
     "name": "Document name",
     "expiry": "Expiry date",
-    "notes": "Notes"
+    "notes": "Notes",
+    "remove": "Remove",
+    "empty": "No documents uploaded yet.",
+    "noFile": "No file attached"
   },
   "teamPage": {
     "title": "Team access",

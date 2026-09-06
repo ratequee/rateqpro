@@ -9,6 +9,7 @@ import { failState, okState, revalidateApp } from "@/features/records/helpers";
 import type { RecordActionState } from "@/features/records/state";
 import {
   attachmentStorageKey,
+  deletePrivateAttachment,
   isAllowedAttachment,
   uploadPrivateAttachment,
 } from "@/lib/supabase/storage";
@@ -82,10 +83,23 @@ export async function saveEmployeeDocumentAction(
 }
 
 export async function deleteEmployeeDocumentAction(formData: FormData) {
-  const user = await requirePermission("employees", "delete");
+  const user = await requirePermission("employees", "edit");
   const id = String(formData.get("id") ?? "");
+  const files = await prisma.attachment.findMany({
+    where: { ownerType: "EMPLOYEE_DOCUMENT", ownerId: id, ...companyScope(user.companyId) },
+  });
+  for (const file of files) {
+    try {
+      await deletePrivateAttachment(file.storageKey);
+    } catch (error) {
+      console.error("deleteEmployeeDocumentAction storage", error);
+    }
+  }
+  await prisma.attachment.deleteMany({
+    where: { ownerType: "EMPLOYEE_DOCUMENT", ownerId: id, ...companyScope(user.companyId) },
+  });
   await prisma.employeeDocument.deleteMany({
     where: { id, ...companyScope(user.companyId) },
   });
-  await revalidateApp(["/employees"]);
+  await revalidateApp(["/employees", "/notifications"]);
 }
