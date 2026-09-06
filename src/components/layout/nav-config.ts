@@ -1,18 +1,21 @@
 import {
   LayoutDashboard,
   CheckCheck,
+  Bell,
   Landmark,
   FileSpreadsheet,
   Receipt,
   ListChecks,
   TrendingUp,
   Calculator,
+  Wallet,
   Contact,
   ClipboardList,
   Users,
   Files,
   Package,
   PieChart,
+  Shield,
   Settings,
   type LucideIcon,
 } from "lucide-react";
@@ -20,25 +23,28 @@ import {
 export type NavItemKey =
   | "dashboard"
   | "approvals"
+  | "alerts"
   | "bankAccounts"
   | "bankReader"
   | "expenses"
   | "obligations"
   | "cashFlow"
   | "tax"
+  | "salary"
   | "clients"
   | "projects"
   | "employees"
   | "documents"
   | "assets"
   | "reports"
+  | "team"
   | "settings";
 
 export type NavItem = {
   href: string;
   key: NavItemKey;
   icon: LucideIcon;
-  badge?: boolean;
+  badge?: "approvals" | "alerts";
 };
 
 export type NavGroup = {
@@ -51,7 +57,8 @@ export const navigation: NavGroup[] = [
     key: "main",
     items: [
       { href: "/dashboard", key: "dashboard", icon: LayoutDashboard },
-      { href: "/approvals", key: "approvals", icon: CheckCheck, badge: true },
+      { href: "/approvals", key: "approvals", icon: CheckCheck, badge: "approvals" },
+      { href: "/notifications", key: "alerts", icon: Bell, badge: "alerts" },
     ],
   },
   {
@@ -63,6 +70,7 @@ export const navigation: NavGroup[] = [
       { href: "/obligations", key: "obligations", icon: ListChecks },
       { href: "/cash-flow", key: "cashFlow", icon: TrendingUp },
       { href: "/tax", key: "tax", icon: Calculator },
+      { href: "/salary", key: "salary", icon: Wallet },
     ],
   },
   {
@@ -79,21 +87,21 @@ export const navigation: NavGroup[] = [
     key: "reportsSection",
     items: [
       { href: "/reports", key: "reports", icon: PieChart },
+      { href: "/team", key: "team", icon: Shield },
       { href: "/settings", key: "settings", icon: Settings },
     ],
   },
 ];
 
 const extraTitles: Array<{ href: string; key: NavItemKey }> = [
-  { href: "/notifications", key: "approvals" },
   { href: "/credit-cards", key: "bankAccounts" },
   { href: "/contracts", key: "projects" },
-  { href: "/payroll", key: "employees" },
+  { href: "/payroll", key: "salary" },
   { href: "/operating-expenses", key: "expenses" },
   { href: "/project-expenses", key: "expenses" },
   { href: "/cash-advances", key: "assets" },
-  { href: "/users", key: "settings" },
-  { href: "/roles", key: "settings" },
+  { href: "/users", key: "team" },
+  { href: "/roles", key: "team" },
   { href: "/audit-log", key: "settings" },
 ];
 

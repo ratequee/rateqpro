@@ -8,6 +8,7 @@ import { KpiCard } from "@/components/ui/kpi-card";
 import { StatusPill } from "@/components/ui/status-pill";
 import { InitialsAvatar } from "@/components/ui/initials-avatar";
 import { EmptyState } from "@/components/ui/empty-state";
+import { HorizontalScroll } from "@/components/ui/horizontal-scroll";
 import { ClientFormDialog } from "@/features/clients/client-form";
 import { DeleteRecordButton } from "@/features/records/delete-button";
 import { deleteClientAction } from "@/features/clients/actions";
@@ -48,7 +49,7 @@ export default async function ClientsPage() {
       {clients.length === 0 ? (
         <EmptyState title={t("empty")} />
       ) : (
-        <div className="overflow-hidden rounded-[13px] border border-border bg-card">
+        <HorizontalScroll className="rounded-[13px] border border-border bg-card" minWidth="860px">
           <div className="grid grid-cols-[1fr_90px_120px_120px_100px_minmax(140px,auto)] gap-2 bg-muted px-3.5 py-2.5 text-[11px] font-semibold text-muted-foreground">
             <span>{t("client")}</span>
             <span>{t("projectCount")}</span>
@@ -95,7 +96,7 @@ export default async function ClientsPage() {
               </div>
             </div>
           ))}
-        </div>
+        </HorizontalScroll>
       )}
     </div>
   );

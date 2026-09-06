@@ -8,20 +8,36 @@ import { formatDate, toDateInputValue } from "@/lib/formatting/date";
 import { serializeMoney } from "@/features/records/helpers";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
+import { HorizontalScroll } from "@/components/ui/horizontal-scroll";
 import { ExpenseFormDialog } from "@/features/expenses/expense-form";
 import { DeleteRecordButton } from "@/features/records/delete-button";
 import { deleteExpenseAction } from "@/features/expenses/actions";
 import { isTransactionCategory } from "@/lib/finance/categories";
+import { encodePaymentSource } from "@/lib/finance/payment-source";
 
 export default async function OperatingExpensesPage() {
   const user = await requirePermission("operatingExpenses", "view");
   const locale = await getLocale();
   const t = await getTranslations("expensesPage");
   const tCat = await getTranslations("transactions.categories");
-  const rows = await prisma.expense.findMany({
-    where: { ...companyScope(user.companyId), kind: "OPERATING" },
-    orderBy: { date: "desc" },
-  });
+  const [rows, accounts, cards, advances] = await Promise.all([
+    prisma.expense.findMany({
+      where: { ...companyScope(user.companyId), kind: "OPERATING" },
+      orderBy: { date: "desc" },
+    }),
+    prisma.bankAccount.findMany({
+      where: { ...companyScope(user.companyId), isActive: true },
+      select: { id: true, name: true, isPrimary: true },
+    }),
+    prisma.creditCard.findMany({
+      where: { ...companyScope(user.companyId), isActive: true },
+      select: { id: true, name: true, last4: true },
+    }),
+    prisma.cashAdvance.findMany({
+      where: { ...companyScope(user.companyId), status: { in: ["OPEN", "PARTIALLY_SETTLED"] } },
+      select: { id: true, personName: true },
+    }),
+  ]);
   const total = rows.reduce((sum, row) => sum + Number(row.amount.toString()), 0);
 
   return (
@@ -29,12 +45,20 @@ export default async function OperatingExpensesPage() {
       <PageHeader
         title={t("operatingTitle")}
         icon={Receipt}
-        actions={<ExpenseFormDialog kind="OPERATING" currencyCode={user.currencyCode} />}
+        actions={
+          <ExpenseFormDialog
+            kind="OPERATING"
+            currencyCode={user.currencyCode}
+            accounts={accounts}
+            cards={cards}
+            advances={advances}
+          />
+        }
       />
       {rows.length === 0 ? (
         <EmptyState title={t("empty")} />
       ) : (
-        <div className="overflow-hidden rounded-[13px] border border-border bg-card">
+        <HorizontalScroll className="rounded-[13px] border border-border bg-card" minWidth="780px">
           <div className="grid grid-cols-[1fr_120px_120px_110px_minmax(140px,auto)] bg-muted px-3.5 py-2.5 text-[11px] font-semibold text-muted-foreground">
             <span>{t("description")}</span>
             <span>{t("category")}</span>
@@ -59,6 +83,9 @@ export default async function OperatingExpensesPage() {
                 <ExpenseFormDialog
                   kind="OPERATING"
                   currencyCode={user.currencyCode}
+                  accounts={accounts}
+                  cards={cards}
+                  advances={advances}
                   expense={{
                     id: row.id,
                     description: row.description,
@@ -67,6 +94,10 @@ export default async function OperatingExpensesPage() {
                     date: toDateInputValue(row.date),
                     projectId: row.projectId,
                     notes: row.notes,
+                    paymentSource: encodePaymentSource(
+                      row.paymentSource,
+                      row.creditCardId ?? row.cashAdvanceId ?? row.bankAccountId,
+                    ),
                   }}
                 />
                 <DeleteRecordButton
@@ -83,7 +114,7 @@ export default async function OperatingExpensesPage() {
               {formatAmount(total, locale)} {user.currencyCode}
             </span>
           </div>
-        </div>
+        </HorizontalScroll>
       )}
     </div>
   );

@@ -15,28 +15,35 @@ import {
   updateTransactionAction,
   type TransactionActionState,
 } from "./actions";
+import { InvoiceScanner } from "./invoice-scanner";
 import {
   categoriesForType,
   type TransactionCategory,
 } from "@/lib/finance/categories";
 import { todayInputValue } from "@/lib/formatting/date";
+import { PaymentSourceFields, defaultSourceValue } from "@/features/payments/source-fields";
+import type { PaymentSourceKind } from "@/lib/finance/payment-source";
 
 const initial: TransactionActionState = {};
 
 type ProjectOption = { id: string; code: string; name: string };
-type AccountOption = { id: string; name: string };
+type AccountOption = { id: string; name: string; isPrimary?: boolean };
 
 export function TransactionForm({
   mode,
   currencyCode,
   projects,
   accounts,
+  cards = [],
+  advances = [],
   transaction,
 }: {
   mode: "create" | "edit";
   currencyCode: string;
   projects: ProjectOption[];
   accounts: AccountOption[];
+  cards?: Array<{ id: string; name: string; last4: string | null }>;
+  advances?: Array<{ id: string; personName: string }>;
   transaction?: {
     id: string;
     date: string;
@@ -46,7 +53,11 @@ export function TransactionForm({
     category: string | null;
     projectId: string | null;
     notes: string | null;
-    bankAccountId: string;
+    bankAccountId: string | null;
+    paymentSource?: PaymentSourceKind | null;
+    expenseKind?: "PROJECT" | "OPERATING" | null;
+    creditCardId?: string | null;
+    cashAdvanceId?: string | null;
   };
 }) {
   const t = useTranslations("transactions");
@@ -57,11 +68,48 @@ export function TransactionForm({
   const [type, setType] = useState<"DEPOSIT" | "WITHDRAWAL">(
     transaction?.type ?? "DEPOSIT",
   );
+  const [date, setDate] = useState(transaction?.date ?? todayInputValue());
+  const [amount, setAmount] = useState(transaction?.amount ?? "");
+  const [description, setDescription] = useState(transaction?.description ?? "");
+  const [category, setCategory] = useState(transaction?.category ?? categoriesForType(type)[0]);
+  const [expenseKind, setExpenseKind] = useState(transaction?.expenseKind ?? "OPERATING");
+  const [projectId, setProjectId] = useState(transaction?.projectId ?? "");
+  const [notes, setNotes] = useState(transaction?.notes ?? "");
+  const [source, setSource] = useState(
+    defaultSourceValue(
+      transaction?.paymentSource,
+      transaction?.bankAccountId,
+      transaction?.creditCardId,
+      transaction?.cashAdvanceId,
+    ) ?? (accounts[0] ? `BANK_ACCOUNT:${accounts[0].id}` : "CASH"),
+  );
   const categories = useMemo(() => categoriesForType(type), [type]);
 
   return (
     <form action={formAction} className="max-w-xl space-y-4">
       {mode === "edit" ? <input type="hidden" name="id" value={transaction?.id} /> : null}
+      {mode === "create" ? (
+        <InvoiceScanner
+          attachmentInputId="attachment"
+          onExtract={(result) => {
+            setDate(result.date);
+            setAmount(result.amount);
+            setDescription(result.description);
+            setType(result.type);
+            setCategory(result.category);
+            setNotes(result.notes);
+            if (result.type === "WITHDRAWAL") {
+              setExpenseKind(
+                ["rent", "salaries", "vehicles", "electricity", "internet", "marketing"].includes(
+                  result.category,
+                )
+                  ? "OPERATING"
+                  : "PROJECT",
+              );
+            }
+          }}
+        />
+      ) : null}
       <div className="space-y-2">
         <Label htmlFor="date">{t("date")}</Label>
         <Input
@@ -69,7 +117,8 @@ export function TransactionForm({
           name="date"
           type="date"
           required
-          defaultValue={transaction?.date ?? todayInputValue()}
+          value={date}
+          onChange={(event) => setDate(event.target.value)}
         />
       </div>
       <div className="space-y-2">
@@ -78,9 +127,14 @@ export function TransactionForm({
           id="type"
           name="type"
           value={type}
-          onChange={(event) =>
-            setType(event.target.value as "DEPOSIT" | "WITHDRAWAL")
-          }
+          onChange={(event) => {
+            const next = event.target.value as "DEPOSIT" | "WITHDRAWAL";
+            setType(next);
+            const nextCategories = categoriesForType(next);
+            if (!nextCategories.includes(category as TransactionCategory)) {
+              setCategory(nextCategories[0]);
+            }
+          }}
         >
           <option value="DEPOSIT">{t("deposit")}</option>
           <option value="WITHDRAWAL">{t("withdrawal")}</option>
@@ -91,7 +145,8 @@ export function TransactionForm({
         name="amount"
         label={t("amount")}
         currencyCode={currencyCode}
-        defaultValue={transaction?.amount}
+        value={amount}
+        onChange={setAmount}
         required
       />
       <div className="space-y-2">
@@ -101,7 +156,8 @@ export function TransactionForm({
           name="description"
           required
           minLength={2}
-          defaultValue={transaction?.description}
+          value={description}
+          onChange={(event) => setDescription(event.target.value)}
         />
       </div>
       <div className="space-y-2">
@@ -110,26 +166,39 @@ export function TransactionForm({
           id="category"
           name="category"
           required
-          key={type}
-          defaultValue={
-            transaction?.category && categories.includes(transaction.category as TransactionCategory)
-              ? transaction.category
-              : categories[0]
-          }
+          value={categories.includes(category as TransactionCategory) ? category : categories[0]}
+          onChange={(event) => setCategory(event.target.value)}
         >
-          {categories.map((category) => (
-            <option key={category} value={category}>
-              {tCat(category as TransactionCategory)}
+          {categories.map((item) => (
+            <option key={item} value={item}>
+              {tCat(item as TransactionCategory)}
             </option>
           ))}
         </NativeSelect>
       </div>
+      {type === "WITHDRAWAL" ? (
+        <div className="space-y-2">
+          <Label htmlFor="expenseKind">{t("expenseKind")}</Label>
+          <NativeSelect
+            id="expenseKind"
+            name="expenseKind"
+            value={expenseKind}
+            onChange={(event) => setExpenseKind(event.target.value as "PROJECT" | "OPERATING")}
+          >
+            <option value="OPERATING">{t("operatingExpense")}</option>
+            <option value="PROJECT">{t("projectExpense")}</option>
+          </NativeSelect>
+        </div>
+      ) : (
+        <input type="hidden" name="expenseKind" value="" />
+      )}
       <div className="space-y-2">
         <Label htmlFor="projectId">{t("project")}</Label>
         <NativeSelect
           id="projectId"
           name="projectId"
-          defaultValue={transaction?.projectId ?? ""}
+          value={projectId}
+          onChange={(event) => setProjectId(event.target.value)}
         >
           <option value="">{t("noProject")}</option>
           {projects.map((project) => (
@@ -139,24 +208,21 @@ export function TransactionForm({
           ))}
         </NativeSelect>
       </div>
-      <div className="space-y-2">
-        <Label htmlFor="bankAccountId">{t("bankAccount")}</Label>
-        <NativeSelect
-          id="bankAccountId"
-          name="bankAccountId"
-          required
-          defaultValue={transaction?.bankAccountId ?? accounts[0]?.id}
-        >
-          {accounts.map((account) => (
-            <option key={account.id} value={account.id}>
-              {account.name}
-            </option>
-          ))}
-        </NativeSelect>
-      </div>
+      <PaymentSourceFields
+        accounts={accounts}
+        cards={cards}
+        advances={advances}
+        value={source}
+        onChange={setSource}
+      />
       <div className="space-y-2">
         <Label htmlFor="notes">{t("notes")}</Label>
-        <Textarea id="notes" name="notes" defaultValue={transaction?.notes ?? ""} />
+        <Textarea
+          id="notes"
+          name="notes"
+          value={notes}
+          onChange={(event) => setNotes(event.target.value)}
+        />
       </div>
       <FileUploader id="attachment" name="attachment" label={t("attachment")} />
 
@@ -169,7 +235,9 @@ export function TransactionForm({
                 ? "errors.storage"
                 : state.error === "immutable"
                   ? "errors.immutable"
-                  : "errors.save",
+                  : state.error === "source"
+                    ? "errors.source"
+                    : "errors.save",
           )}
         </p>
       ) : null}

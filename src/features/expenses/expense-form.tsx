@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { RecordFormDialog } from "@/features/records/form-dialog";
 import { saveExpenseAction } from "./actions";
+import { PaymentSourceFields } from "@/features/payments/source-fields";
 
 const PROJECT_CATEGORIES = [
   "materials",
@@ -32,11 +33,17 @@ export function ExpenseFormDialog({
   kind,
   currencyCode,
   projects,
+  accounts = [],
+  cards = [],
+  advances = [],
   expense,
 }: {
   kind: "PROJECT" | "OPERATING";
   currencyCode: string;
   projects?: Array<{ id: string; code: string; name: string }>;
+  accounts?: Array<{ id: string; name: string; isPrimary?: boolean }>;
+  cards?: Array<{ id: string; name: string; last4?: string | null }>;
+  advances?: Array<{ id: string; personName: string }>;
   expense?: {
     id: string;
     description: string;
@@ -45,6 +52,7 @@ export function ExpenseFormDialog({
     date: string;
     projectId: string | null;
     notes: string | null;
+    paymentSource?: string;
   };
 }) {
   const t = useTranslations("expensesPage");
@@ -99,6 +107,12 @@ export function ExpenseFormDialog({
           ))}
         </NativeSelect>
       </div>
+      <PaymentSourceFields
+        accounts={accounts}
+        cards={cards}
+        advances={advances}
+        defaultValue={expense?.paymentSource}
+      />
       <div className="space-y-1.5">
         <Label htmlFor="exp-date">{t("date")}</Label>
         <Input id="exp-date" name="date" type="date" required defaultValue={expense?.date} />

@@ -9,6 +9,8 @@ export function CurrencyInput({
   label,
   currencyCode,
   defaultValue,
+  value,
+  onChange,
   required = false,
 }: {
   id: string;
@@ -16,6 +18,8 @@ export function CurrencyInput({
   label: string;
   currencyCode: string;
   defaultValue?: string;
+  value?: string;
+  onChange?: (value: string) => void;
   required?: boolean;
 }) {
   return (
@@ -33,7 +37,9 @@ export function CurrencyInput({
           step="0.01"
           min="0"
           required={required}
-          defaultValue={defaultValue}
+          value={value}
+          defaultValue={value === undefined ? defaultValue : undefined}
+          onChange={onChange ? (event) => onChange(event.target.value) : undefined}
           className="ps-14"
         />
       </div>

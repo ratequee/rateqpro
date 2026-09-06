@@ -44,7 +44,7 @@ export async function getDashboardWorkspace(companyId: string) {
     ]);
 
   const runwayMonths = calculateRunwayMonths(
-    snapshot.bankBalance,
+    snapshot.liquidAssets,
     snapshot.monthlyObligations,
   );
 
@@ -66,16 +66,28 @@ export async function getBankWorkspace(companyId: string) {
     prisma.creditCard.findMany({
       where: { companyId, isActive: true },
       orderBy: { createdAt: "asc" },
+      include: {
+        transactions: {
+          where: { status: "POSTED" },
+          select: { kind: true, amount: true },
+        },
+      },
     }),
     getCompanyFinancialSnapshot(companyId),
     prisma.bankTransaction.findMany({
-      where: { companyId, status: "POSTED" },
+      where: {
+        companyId,
+        status: "POSTED",
+        paymentSource: { in: ["BANK_ACCOUNT", "CASH"] },
+        bankAccountId: { not: null },
+      },
       select: { bankAccountId: true, type: true, amount: true },
     }),
   ]);
 
   const balances = new Map<string, bigint>();
   for (const row of movements) {
+    if (!row.bankAccountId) continue;
     const current = balances.get(row.bankAccountId) ?? 0n;
     const amount = decimalToFils(row.amount);
     balances.set(
@@ -89,7 +101,19 @@ export async function getBankWorkspace(companyId: string) {
       ...account,
       balance: balances.get(account.id) ?? 0n,
     })),
-    cards,
+    cards: cards.map((card) => {
+      const balance = card.transactions.reduce((sum, row) => {
+        const amount = decimalToFils(row.amount);
+        return row.kind === "TOPUP" || row.kind === "DEPOSIT" ? sum + amount : sum - amount;
+      }, 0n);
+      return {
+        id: card.id,
+        name: card.name,
+        last4: card.last4,
+        isActive: card.isActive,
+        balance,
+      };
+    }),
     snapshot,
   };
 }
@@ -155,6 +179,9 @@ export async function getProjectsWorkspace(companyId: string) {
         where: { status: "POSTED" },
         select: { type: true, amount: true },
       },
+      payments: {
+        orderBy: { dueDate: "asc" },
+      },
     },
   });
 
@@ -188,6 +215,8 @@ export async function getProjectsWorkspace(companyId: string) {
       profit,
       collectedPct,
       profitPct,
+      outstanding: contractValue - collected,
+      payments: project.payments,
     };
   });
 }
@@ -218,6 +247,9 @@ export async function getEmployeesWorkspace(companyId: string) {
     prisma.employee.findMany({
       where: { companyId },
       orderBy: { name: "asc" },
+      include: {
+        documents: { orderBy: { createdAt: "desc" }, take: 8 },
+      },
     }),
     prisma.payroll.findMany({
       where: { companyId },

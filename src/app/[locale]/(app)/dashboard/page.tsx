@@ -64,7 +64,7 @@ export default async function DashboardPage() {
           href="/bank-accounts"
           accent="brand"
           label={t("totalLiquidity")}
-          value={amount(snapshot.bankBalance)}
+          value={amount(snapshot.liquidAssets)}
           hint={user.currencyCode}
         />
         <KpiCard

@@ -3,6 +3,7 @@ import type { UserRole, UserStatus } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import { getSessionToken, hashToken } from "./session";
 import { readSessionCache, writeSessionUser } from "./session-cache";
+import type { PermissionKey } from "@/lib/permissions/catalog";
 
 export type CurrentUser = {
   id: string;
@@ -15,6 +16,7 @@ export type CurrentUser = {
   currencyCode: string;
   dateFormat: string;
   image: string | null;
+  permissionKeys: PermissionKey[] | null;
 };
 
 export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
@@ -43,6 +45,10 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
               dateFormat: true,
             },
           },
+          permissionGrants: {
+            where: { granted: true },
+            select: { key: true },
+          },
         },
       },
     },
@@ -64,6 +70,10 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
     currencyCode: session.user.company.currencyCode,
     dateFormat: session.user.company.dateFormat,
     image: session.user.image,
+    permissionKeys:
+      session.user.permissionGrants.length > 0
+        ? session.user.permissionGrants.map((row) => row.key as PermissionKey)
+        : null,
   };
   writeSessionUser(tokenHash, user);
   return user;

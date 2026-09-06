@@ -127,8 +127,52 @@ export const expenseFormSchema = z
     category: z.string().trim().min(1).max(40),
     description: z.string().trim().min(2).max(240),
     notes: optionalText,
+    paymentSource: z.string().min(1),
   })
   .refine((data) => data.kind !== "PROJECT" || Boolean(data.projectId));
+
+export const cardMovementSchema = z.object({
+  creditCardId: z.string().min(1),
+  kind: z.enum(["TOPUP", "CHARGE"]),
+  amount: moneySchema,
+  date: dateSchema,
+  description: z.string().trim().min(2).max(240),
+  notes: optionalText,
+  fundFrom: z.string().optional().or(z.literal("")),
+});
+
+export const salaryRowSchema = z.object({
+  id: z.string().optional().or(z.literal("")),
+  employeeId: z.string().min(1),
+  periodStart: dateSchema,
+  periodEnd: dateSchema,
+  basicSalary: moneySchema,
+  foodAllowance: moneySchema.optional().or(z.literal("")),
+  accommodationAllowance: moneySchema.optional().or(z.literal("")),
+  overtime: moneySchema.optional().or(z.literal("")),
+  deductions: moneySchema.optional().or(z.literal("")),
+  allocations: z.string().optional().or(z.literal("")),
+});
+
+export const employeeDocumentSchema = z.object({
+  employeeId: z.string().min(1),
+  name: z.string().trim().min(2).max(160),
+  kind: z.enum(["NORMAL", "EXPIRING"]),
+  expiryDate: dateSchema.optional().or(z.literal("")),
+  notes: optionalText,
+});
+
+export const projectPaymentSchema = z.object({
+  projectId: z.string().min(1),
+  amount: moneySchema,
+  dueDate: dateSchema,
+  notes: optionalText,
+});
+
+export const teamPermissionsSchema = z.object({
+  userId: z.string().min(1),
+  keys: z.array(z.string()),
+});
 
 export const bankImportSchema = z.object({
   bankAccountId: z.string().min(1),

@@ -36,9 +36,11 @@ function HeaderAlertDot({ alertCount }: { alertCount: Promise<number> }) {
 export function AppHeader({
   user,
   alertCount,
+  unreadAlerts,
 }: {
   user: CurrentUser;
   alertCount: Promise<number>;
+  unreadAlerts: Promise<number>;
 }) {
   const t = useTranslations("common");
   const tNav = useTranslations("nav");
@@ -67,6 +69,7 @@ export function AppHeader({
             <Sidebar
               user={user}
               alertCount={alertCount}
+              unreadAlerts={unreadAlerts}
               onNavigate={() => setOpen(false)}
             />
           </SheetContent>
@@ -94,10 +97,10 @@ export function AppHeader({
           aria-label={t("notifications")}
           asChild
         >
-          <Link href="/approvals">
+          <Link href="/notifications">
             <Bell className="size-4" />
             <Suspense fallback={null}>
-              <HeaderAlertDot alertCount={alertCount} />
+              <HeaderAlertDot alertCount={unreadAlerts} />
             </Suspense>
           </Link>
         </Button>

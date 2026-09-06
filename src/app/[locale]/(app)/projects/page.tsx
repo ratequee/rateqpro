@@ -3,12 +3,14 @@ import { ClipboardList } from "lucide-react";
 import { requireUser } from "@/lib/auth/guards";
 import { getProjectsWorkspace } from "@/lib/finance/workspace";
 import { formatAmount } from "@/lib/formatting/currency";
+import { formatDate } from "@/lib/formatting/date";
 import { PageHeader } from "@/components/ui/page-header";
 import { KpiCard } from "@/components/ui/kpi-card";
 import { StatusPill } from "@/components/ui/status-pill";
 import { EmptyState } from "@/components/ui/empty-state";
 import { cn } from "@/lib/utils";
 import { ProjectFormDialog } from "@/features/projects/project-form";
+import { ProjectDocumentDialog, ProjectPaymentDialog } from "@/features/projects/project-extras";
 import { DeleteRecordButton } from "@/features/records/delete-button";
 import { deleteProjectAction } from "@/features/projects/actions";
 import { serializeMoney } from "@/features/records/helpers";
@@ -109,10 +111,24 @@ export default async function ProjectsPage() {
                   className={project.collected > 0n ? "text-success" : "text-destructive"}
                 />
                 <Mini
-                  label={t("profit")}
-                  value={`${Math.round(project.profitPct)}%`}
-                  className="text-success"
+                  label={t("outstanding")}
+                  value={formatAmount(project.outstanding, locale)}
+                  className="text-warning"
                 />
+              </div>
+              {project.payments.length > 0 ? (
+                <div className="mb-2 space-y-1 text-[11px] text-muted-foreground">
+                  {project.payments.map((payment) => (
+                    <div key={payment.id}>
+                      {t("paymentDue")}: {formatDate(payment.dueDate, user.dateFormat, locale)} ·{" "}
+                      {formatAmount(payment.amount.toString(), locale)}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+              <div className="flex flex-wrap gap-1">
+                <ProjectPaymentDialog projectId={project.id} currencyCode={user.currencyCode} />
+                <ProjectDocumentDialog projectId={project.id} />
               </div>
             </div>
           ))}

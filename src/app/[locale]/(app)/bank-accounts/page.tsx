@@ -8,6 +8,7 @@ import { KpiCard } from "@/components/ui/kpi-card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { cn } from "@/lib/utils";
 import { BankAccountFormDialog, CreditCardFormDialog } from "@/features/bank-accounts/account-form";
+import { CardMovementDialog } from "@/features/bank-accounts/card-movement-form";
 import { DeleteRecordButton } from "@/features/records/delete-button";
 import { deleteBankAccountAction, deleteCreditCardAction } from "@/features/bank-accounts/actions";
 
@@ -39,12 +40,27 @@ export default async function BankAccountsPage() {
         <KpiCard
           accent="brand"
           label={t("totalBalance")}
+          value={formatAmount(snapshot.liquidAssets, locale)}
+          hint={user.currencyCode}
+        />
+        <KpiCard
+          accent="success"
+          label={t("bank")}
           value={formatAmount(snapshot.bankBalance, locale)}
           hint={user.currencyCode}
         />
-        <KpiCard accent="success" label={t("accounts")} value={String(accounts.length)} />
-        <KpiCard accent="warning" label={t("cards")} value={String(cards.length)} />
-        <KpiCard accent="none" label={t("creditCard")} value={String(cards.length)} />
+        <KpiCard
+          accent="warning"
+          label={t("cards")}
+          value={formatAmount(snapshot.cardBalance, locale)}
+          hint={user.currencyCode}
+        />
+        <KpiCard
+          accent="none"
+          label={t("custody")}
+          value={formatAmount(snapshot.custodyRemaining, locale)}
+          hint={user.currencyCode}
+        />
       </section>
       {accounts.length === 0 && cards.length === 0 ? (
         <EmptyState title={t("empty")} />
@@ -103,8 +119,17 @@ export default async function BankAccountsPage() {
                 {card.last4 ? `•••• •••• ${card.last4}` : "••••"}
               </p>
               <p className="mt-3 text-[9.5px] text-white/50">{t("balance")}</p>
-              <p className="text-[26px] font-bold text-gold-bright">—</p>
-              <div className="relative z-10 mt-3 flex gap-1 rounded-lg bg-black/25 p-1">
+              <p className="text-[26px] font-bold text-gold-bright">
+                {formatAmount(card.balance, locale)} {user.currencyCode}
+              </p>
+              <div className="relative z-10 mt-3 flex flex-wrap gap-1 rounded-lg bg-black/25 p-1">
+                <CardMovementDialog
+                  cardId={card.id}
+                  kind="TOPUP"
+                  currencyCode={user.currencyCode}
+                  accounts={accounts}
+                />
+                <CardMovementDialog cardId={card.id} kind="CHARGE" currencyCode={user.currencyCode} />
                 <CreditCardFormDialog
                   card={{ id: card.id, name: card.name, last4: card.last4 }}
                 />

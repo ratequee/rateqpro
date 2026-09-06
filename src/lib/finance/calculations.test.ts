@@ -27,6 +27,17 @@ describe("financial calculations", () => {
     expect(filsToNumber(calculateBankBalance(ledger))).toBe(27000.5);
   });
 
+  it("keeps card and custody movements out of bank balance but in expenses", () => {
+    const mixed = [
+      { type: "DEPOSIT" as const, amount: "1000", status: "POSTED" as const, paymentSource: "BANK_ACCOUNT" as const },
+      { type: "WITHDRAWAL" as const, amount: "200", status: "POSTED" as const, paymentSource: "CREDIT_CARD" as const },
+      { type: "WITHDRAWAL" as const, amount: "50", status: "POSTED" as const, paymentSource: "CUSTODY" as const, isTransfer: false },
+      { type: "WITHDRAWAL" as const, amount: "300", status: "POSTED" as const, paymentSource: "BANK_ACCOUNT" as const, isTransfer: true },
+    ];
+    expect(filsToNumber(calculateBankBalance(mixed))).toBe(700);
+    expect(filsToNumber(calculateExpenses(mixed))).toBe(250);
+  });
+
   it("calculates revenue from posted deposits only", () => {
     expect(filsToNumber(calculateRevenue(ledger))).toBe(35000.5);
   });

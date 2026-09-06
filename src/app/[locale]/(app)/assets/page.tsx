@@ -11,6 +11,7 @@ import { SectionCard } from "@/components/ui/section-card";
 import { StatusPill } from "@/components/ui/status-pill";
 import { InitialsAvatar } from "@/components/ui/initials-avatar";
 import { EmptyState } from "@/components/ui/empty-state";
+import { HorizontalScroll } from "@/components/ui/horizontal-scroll";
 import { AssetFormDialog, CashAdvanceFormDialog } from "@/features/assets/asset-form";
 import { SettleCashAdvanceButton } from "@/features/assets/settle-button";
 import { DeleteRecordButton } from "@/features/records/delete-button";
@@ -109,7 +110,7 @@ export default async function AssetsPage() {
           <p className="text-sm text-muted-foreground">{t("custodyEmpty")}</p>
         ) : (
           <>
-            <div className="overflow-hidden rounded-[10px] border border-border">
+            <HorizontalScroll className="rounded-[10px] border border-border" minWidth="780px">
               <div className="grid grid-cols-[1fr_100px_100px_100px_minmax(160px,auto)] bg-muted px-3.5 py-2 text-[11px] font-semibold text-muted-foreground">
                 <span>{t("employee")}</span>
                 <span>{t("amount")}</span>
@@ -151,7 +152,7 @@ export default async function AssetsPage() {
                   </div>
                 </div>
               ))}
-            </div>
+            </HorizontalScroll>
             <div className="mt-2.5 flex justify-between rounded-lg bg-wn-bg px-3.5 py-2.5 font-bold text-wn-fg">
               <span>{t("openTotal")}</span>
               <span>

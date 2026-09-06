@@ -12,21 +12,33 @@ import {
 } from "./calculations";
 
 function toLedger(
-  rows: Array<{ type: "DEPOSIT" | "WITHDRAWAL"; amount: { toString(): string }; status: "POSTED" | "VOIDED" | "REVERSED" }>,
+  rows: Array<{
+    type: "DEPOSIT" | "WITHDRAWAL";
+    amount: { toString(): string };
+    status: "PENDING" | "POSTED" | "VOIDED" | "REVERSED";
+    paymentSource?: LedgerEntry["paymentSource"];
+    isTransfer?: boolean;
+  }>,
 ): LedgerEntry[] {
   return rows.map((row) => ({
     type: row.type,
     amount: row.amount.toString(),
     status: row.status,
+    paymentSource: row.paymentSource,
+    isTransfer: row.isTransfer,
   }));
 }
 
+function decimalToFils(value: { toString(): string }): bigint {
+  return toFils(value.toString());
+}
+
 export async function getCompanyFinancialSnapshot(companyId: string) {
-  const [transactions, obligations, projectCounts, contractCount, recent] =
+  const [transactions, obligations, projectCounts, contractCount, recent, cardRows, advances] =
     await Promise.all([
       prisma.bankTransaction.findMany({
         where: { companyId },
-        select: { type: true, amount: true, status: true },
+        select: { type: true, amount: true, status: true, paymentSource: true, isTransfer: true },
       }),
       prisma.obligation.findMany({
         where: { companyId },
@@ -51,6 +63,14 @@ export async function getCompanyFinancialSnapshot(companyId: string) {
           description: true,
         },
       }),
+      prisma.creditCardTransaction.findMany({
+        where: { companyId, status: "POSTED" },
+        select: { kind: true, amount: true },
+      }),
+      prisma.cashAdvance.findMany({
+        where: { companyId, status: { in: ["OPEN", "PARTIALLY_SETTLED", "OVERDUE"] } },
+        select: { amountIssued: true, amountSpent: true },
+      }),
     ]);
 
   const ledger = toLedger(transactions);
@@ -58,6 +78,15 @@ export async function getCompanyFinancialSnapshot(companyId: string) {
   const revenue = calculateRevenue(ledger);
   const expenses = calculateExpenses(ledger);
   const netProfit = calculateNetProfit(ledger);
+  const cardBalance = cardRows.reduce((sum, row) => {
+    const amount = decimalToFils(row.amount);
+    return row.kind === "TOPUP" || row.kind === "DEPOSIT" ? sum + amount : sum - amount;
+  }, 0n);
+  const custodyRemaining = advances.reduce(
+    (sum, row) => sum + decimalToFils(row.amountIssued) - decimalToFils(row.amountSpent),
+    0n,
+  );
+  const liquidAssets = bankBalance + cardBalance + custodyRemaining;
   const monthlyObligations = calculateMonthlyObligations(
     obligations.map((item) => ({
       amount: item.amount.toString(),
@@ -89,6 +118,9 @@ export async function getCompanyFinancialSnapshot(companyId: string) {
 
   return {
     bankBalance,
+    cardBalance,
+    custodyRemaining,
+    liquidAssets,
     revenue,
     expenses,
     netProfit,

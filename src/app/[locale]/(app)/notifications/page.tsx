@@ -12,11 +12,13 @@ import {
   MarkReadButton,
   RefreshAlertsButton,
 } from "@/features/notifications/notification-actions";
+import { refreshAlertsAction } from "@/features/notifications/actions";
 
 export default async function NotificationsPage() {
   const user = await requirePermission("notifications", "view");
   const locale = await getLocale();
   const t = await getTranslations("notificationsPage");
+  await refreshAlertsAction();
   const items = await prisma.notification.findMany({
     where: companyScope(user.companyId),
     orderBy: { createdAt: "desc" },

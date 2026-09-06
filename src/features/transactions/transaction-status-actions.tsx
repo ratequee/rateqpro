@@ -14,7 +14,7 @@ export function TransactionStatusActions({
   canReverse,
 }: {
   id: string;
-  status: "POSTED" | "VOIDED" | "REVERSED";
+  status: "PENDING" | "POSTED" | "VOIDED" | "REVERSED";
   canVoid: boolean;
   canReverse: boolean;
 }) {

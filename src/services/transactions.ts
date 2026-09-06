@@ -8,7 +8,7 @@ export type TransactionListQuery = {
   companyId: string;
   search?: string;
   type?: "DEPOSIT" | "WITHDRAWAL" | "ALL";
-  status?: "POSTED" | "VOIDED" | "REVERSED" | "ALL";
+  status?: "PENDING" | "POSTED" | "VOIDED" | "REVERSED" | "ALL";
   projectId?: string;
   category?: string;
   from?: string;
@@ -58,7 +58,7 @@ function buildWhere(query: TransactionListQuery): Prisma.BankTransactionWhereInp
 
 export async function nextTransactionReference(
   companyId: string,
-  db: Pick<typeof prisma, "bankTransaction"> = prisma,
+  db: Prisma.TransactionClient | typeof prisma = prisma,
 ): Promise<string> {
   const last = await db.bankTransaction.findFirst({
     where: companyScope(companyId),
@@ -83,6 +83,8 @@ export async function listTransactions(query: TransactionListQuery) {
         project: { select: { id: true, code: true, name: true } },
         createdBy: { select: { id: true, name: true } },
         bankAccount: { select: { id: true, name: true } },
+        creditCard: { select: { id: true, name: true, last4: true } },
+        cashAdvance: { select: { id: true, personName: true } },
       },
       orderBy: [{ [sortField]: sortDir }, { createdAt: "desc" }],
       skip: (page - 1) * TRANSACTION_PAGE_SIZE,
@@ -91,7 +93,7 @@ export async function listTransactions(query: TransactionListQuery) {
     prisma.bankTransaction.count({ where }),
     prisma.bankTransaction.findMany({
       where,
-      select: { type: true, amount: true, status: true },
+      select: { type: true, amount: true, status: true, paymentSource: true, isTransfer: true },
     }),
   ]);
 
@@ -99,6 +101,8 @@ export async function listTransactions(query: TransactionListQuery) {
     type: row.type,
     amount: row.amount.toString(),
     status: row.status,
+    paymentSource: row.paymentSource,
+    isTransfer: row.isTransfer,
   }));
 
   return {
@@ -111,6 +115,17 @@ export async function listTransactions(query: TransactionListQuery) {
       description: row.description,
       category: row.category,
       status: row.status,
+      paymentSource: row.paymentSource,
+      sourceLabel:
+        row.paymentSource === "CASH"
+          ? "Cash"
+          : row.creditCard
+            ? row.creditCard.last4
+              ? `${row.creditCard.name} ••${row.creditCard.last4}`
+              : row.creditCard.name
+            : row.cashAdvance
+              ? row.cashAdvance.personName
+              : (row.bankAccount?.name ?? "—"),
       project: row.project,
       createdBy: { name: row.createdBy.name },
     })),
@@ -132,6 +147,8 @@ export async function getTransaction(companyId: string, id: string) {
       project: { select: { id: true, code: true, name: true } },
       createdBy: { select: { id: true, name: true, email: true } },
       bankAccount: { select: { id: true, name: true } },
+      creditCard: { select: { id: true, name: true, last4: true } },
+      cashAdvance: { select: { id: true, personName: true } },
     },
   });
 }

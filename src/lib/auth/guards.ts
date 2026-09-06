@@ -19,7 +19,7 @@ export async function requirePermission(
   action: PermissionAction,
 ): Promise<CurrentUser> {
   const user = await requireUser();
-  if (!hasPermission(user.role, module, action)) {
+  if (!hasPermission(user.role, module, action, user.permissionKeys)) {
     const locale = await getLocale();
     redirect({ href: "/dashboard", locale });
     throw new Error("FORBIDDEN");

@@ -18,6 +18,7 @@ const user = {
   currencyCode: "QAR",
   dateFormat: "dd/MM/yyyy",
   image: null,
+  permissionKeys: null,
 } as CurrentUser;
 
 afterEach(() => {

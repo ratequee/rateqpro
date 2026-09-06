@@ -87,7 +87,20 @@ export default async function TransactionDetailPage({
               : t("noProject")
           }
         />
-        <Field label={t("bankAccount")} value={transaction.bankAccount.name} />
+        <Field
+          label={t("source")}
+          value={
+            transaction.paymentSource === "CASH"
+              ? t("cash")
+              : transaction.creditCard
+                ? transaction.creditCard.last4
+                  ? `${transaction.creditCard.name} ••${transaction.creditCard.last4}`
+                  : transaction.creditCard.name
+                : transaction.cashAdvance
+                  ? transaction.cashAdvance.personName
+                  : (transaction.bankAccount?.name ?? "—")
+          }
+        />
         <Field label={t("createdBy")} value={transaction.createdBy.name} />
         <Field
           label={t("createdAt")}

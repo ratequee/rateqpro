@@ -10,6 +10,7 @@ import { KpiCard } from "@/components/ui/kpi-card";
 import { SectionCard } from "@/components/ui/section-card";
 import { StatusPill } from "@/components/ui/status-pill";
 import { EmptyState } from "@/components/ui/empty-state";
+import { HorizontalScroll } from "@/components/ui/horizontal-scroll";
 import { ObligationFormDialog, PayObligationButton } from "@/features/obligations/obligation-form";
 import { DeleteRecordButton } from "@/features/records/delete-button";
 import { deleteObligationAction } from "@/features/obligations/actions";
@@ -63,10 +64,11 @@ export default async function ObligationsPage() {
         <EmptyState title={t("empty")} />
       ) : (
         <SectionCard title={t("breakdown")} icon={ListChecks}>
+          <HorizontalScroll minWidth="820px">
           {rows.map((item) => (
             <div
               key={item.id}
-              className="flex flex-wrap items-center gap-2.5 border-b border-muted py-2.5 last:border-0"
+              className="flex flex-nowrap items-center gap-2.5 border-b border-muted py-2.5 last:border-0"
             >
               <span className="min-w-[140px] text-[12.5px]">{item.name}</span>
               <div className="h-[7px] min-w-[80px] flex-1 overflow-hidden rounded bg-muted">
@@ -99,6 +101,7 @@ export default async function ObligationsPage() {
               </div>
             </div>
           ))}
+          </HorizontalScroll>
         </SectionCard>
       )}
     </div>

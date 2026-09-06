@@ -1,12 +1,16 @@
 import { addFils, filsToNumber, subFils, toFils } from "@/lib/formatting/currency";
 
-export type LedgerStatus = "POSTED" | "VOIDED" | "REVERSED";
+export type LedgerStatus = "PENDING" | "POSTED" | "VOIDED" | "REVERSED";
 export type LedgerType = "DEPOSIT" | "WITHDRAWAL";
+
+export type LedgerPaymentSource = "BANK_ACCOUNT" | "CREDIT_CARD" | "CASH" | "CUSTODY";
 
 export type LedgerEntry = {
   type: LedgerType;
   amount: string | number;
   status: LedgerStatus;
+  paymentSource?: LedgerPaymentSource;
+  isTransfer?: boolean;
 };
 
 export type ProjectLedger = {
@@ -43,22 +47,28 @@ function posted(entries: LedgerEntry[]): LedgerEntry[] {
   return entries.filter((entry) => entry.status === "POSTED");
 }
 
+function isCashLike(entry: LedgerEntry) {
+  return !entry.paymentSource || entry.paymentSource === "BANK_ACCOUNT" || entry.paymentSource === "CASH";
+}
+
 export function calculateBankBalance(entries: LedgerEntry[]): bigint {
-  return posted(entries).reduce((balance, entry) => {
-    const amount = toFils(entry.amount);
-    return entry.type === "DEPOSIT" ? addFils(balance, amount) : subFils(balance, amount);
-  }, 0n);
+  return posted(entries)
+    .filter((entry) => isCashLike(entry))
+    .reduce((balance, entry) => {
+      const amount = toFils(entry.amount);
+      return entry.type === "DEPOSIT" ? addFils(balance, amount) : subFils(balance, amount);
+    }, 0n);
 }
 
 export function calculateRevenue(entries: LedgerEntry[]): bigint {
   return posted(entries)
-    .filter((entry) => entry.type === "DEPOSIT")
+    .filter((entry) => entry.type === "DEPOSIT" && !entry.isTransfer && isCashLike(entry))
     .reduce((total, entry) => addFils(total, toFils(entry.amount)), 0n);
 }
 
 export function calculateExpenses(entries: LedgerEntry[]): bigint {
   return posted(entries)
-    .filter((entry) => entry.type === "WITHDRAWAL")
+    .filter((entry) => entry.type === "WITHDRAWAL" && !entry.isTransfer)
     .reduce((total, entry) => addFils(total, toFils(entry.amount)), 0n);
 }
 

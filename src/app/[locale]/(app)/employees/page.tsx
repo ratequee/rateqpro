@@ -9,12 +9,13 @@ import { InitialsAvatar } from "@/components/ui/initials-avatar";
 import { EmptyState } from "@/components/ui/empty-state";
 import { SectionCard } from "@/components/ui/section-card";
 import { EmployeeFormDialog } from "@/features/employees/employee-form";
+import { EmployeeDocumentDialog } from "@/features/employees/document-form";
 import { DeleteRecordButton } from "@/features/records/delete-button";
 import { deleteEmployeeAction } from "@/features/employees/actions";
 import { PayrollFormDialog } from "@/features/payroll/payroll-form";
 import { deletePayrollAction } from "@/features/payroll/actions";
 import { serializeMoney } from "@/features/records/helpers";
-import { toDateInputValue } from "@/lib/formatting/date";
+import { formatDate, toDateInputValue } from "@/lib/formatting/date";
 
 export default async function EmployeesPage() {
   const user = await requireUser();
@@ -90,6 +91,17 @@ export default async function EmployeesPage() {
                 <span className="text-sm font-bold text-primary">
                   {formatAmount(employee.salary.toString(), locale)} {user.currencyCode}
                 </span>
+              </div>
+              <div className="mt-2 space-y-1">
+                {employee.documents.map((doc) => (
+                  <div key={doc.id} className="text-[11px] text-muted-foreground">
+                    {doc.name}
+                    {doc.expiryDate
+                      ? ` · ${formatDate(doc.expiryDate, user.dateFormat, locale)}`
+                      : ""}
+                  </div>
+                ))}
+                <EmployeeDocumentDialog employeeId={employee.id} />
               </div>
             </div>
           ))}

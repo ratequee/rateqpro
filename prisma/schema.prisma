@@ -28,9 +28,22 @@ enum ProjectStatus {
 }
 
 enum RecordStatus {
+  PENDING
   POSTED
   VOIDED
   REVERSED
+}
+
+enum PaymentSourceKind {
+  BANK_ACCOUNT
+  CREDIT_CARD
+  CASH
+  CUSTODY
+}
+
+enum DocumentKind {
+  NORMAL
+  EXPIRING
 }
 
 enum TransactionType {
@@ -116,6 +129,9 @@ enum NotificationType {
   LOW_BALANCE
   OPEN_CASH_ADVANCE
   PROJECT_PAYMENT_DUE
+  DOCUMENT_EXPIRING
+  DOCUMENT_EXPIRED
+  TRANSACTION_PENDING
   SYSTEM_ACTIVITY
 }
 
@@ -127,6 +143,7 @@ enum AttachmentOwnerType {
   CASH_ADVANCE
   ASSET
   CREDIT_CARD_TRANSACTION
+  EMPLOYEE_DOCUMENT
 }
 
 enum SubscriptionStatus {
@@ -173,6 +190,8 @@ model Company {
   subscription            Subscription?
   userNotificationPrefs   UserNotificationPreference[]
   documents               CompanyDocument[]
+  employeeDocuments       EmployeeDocument[]
+  projectPayments         ProjectPayment[]
 
   @@index([slug])
 }
@@ -200,6 +219,7 @@ model User {
   cashAdvances        CashAdvance[]
   notifications       Notification[]
   notificationPref    UserNotificationPreference?
+  permissionGrants    UserPermission[]
 
   @@index([companyId])
   @@index([companyId, role])
@@ -237,6 +257,17 @@ model RolePermission {
 
   @@id([role, permissionId])
   @@index([permissionId])
+}
+
+model UserPermission {
+  id      String  @id @default(cuid())
+  userId  String
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  key     String
+  granted Boolean @default(true)
+
+  @@unique([userId, key])
+  @@index([userId])
 }
 
 model Client {
@@ -278,6 +309,7 @@ model Project {
   expenses            Expense[]
   payrollAllocations  PayrollAllocation[]
   cashAdvances        CashAdvance[]
+  payments            ProjectPayment[]
 
   @@unique([companyId, code])
   @@index([companyId, status])
@@ -319,6 +351,7 @@ model BankAccount {
   updatedAt   DateTime @updatedAt
 
   transactions BankTransaction[]
+  expenses     Expense[]
 
   @@index([companyId])
 }
@@ -327,10 +360,19 @@ model BankTransaction {
   id              String          @id @default(cuid())
   companyId       String
   company         Company         @relation(fields: [companyId], references: [id], onDelete: Restrict)
-  bankAccountId   String
-  bankAccount     BankAccount     @relation(fields: [bankAccountId], references: [id], onDelete: Restrict)
+  bankAccountId   String?
+  bankAccount     BankAccount?    @relation(fields: [bankAccountId], references: [id], onDelete: Restrict)
   projectId       String?
   project         Project?        @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  paymentSource   PaymentSourceKind @default(BANK_ACCOUNT)
+  expenseKind     ExpenseKind?
+  isTransfer      Boolean         @default(false)
+  creditCardId    String?
+  creditCard      CreditCard?     @relation(fields: [creditCardId], references: [id], onDelete: SetNull)
+  cashAdvanceId   String?
+  cashAdvance     CashAdvance?    @relation(fields: [cashAdvanceId], references: [id], onDelete: SetNull)
+  creditCardTransactionId String? @unique
+  creditCardTransaction   CreditCardTransaction? @relation("CardTxnLink", fields: [creditCardTransactionId], references: [id], onDelete: SetNull)
   reference       String
   date            DateTime        @db.Date
   type            TransactionType
@@ -367,6 +409,13 @@ model Expense {
   project         Project?        @relation(fields: [projectId], references: [id], onDelete: SetNull)
   transactionId   String?
   transaction     BankTransaction? @relation(fields: [transactionId], references: [id], onDelete: SetNull)
+  paymentSource   PaymentSourceKind @default(BANK_ACCOUNT)
+  bankAccountId   String?
+  bankAccount     BankAccount?    @relation(fields: [bankAccountId], references: [id], onDelete: SetNull)
+  creditCardId    String?
+  creditCard      CreditCard?     @relation(fields: [creditCardId], references: [id], onDelete: SetNull)
+  cashAdvanceId   String?
+  cashAdvance     CashAdvance?    @relation(fields: [cashAdvanceId], references: [id], onDelete: SetNull)
   date            DateTime        @db.Date
   amount          Decimal         @db.Decimal(19, 4)
   category        String
@@ -404,6 +453,8 @@ model CashAdvance {
   updatedAt    DateTime          @updatedAt
 
   settlements CashAdvanceSettlement[]
+  transactions BankTransaction[]
+  expenses     Expense[]
 
   @@unique([companyId, number])
   @@index([companyId, status])
@@ -431,7 +482,9 @@ model CreditCard {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  transactions CreditCardTransaction[]
+  transactions     CreditCardTransaction[]
+  bankTransactions BankTransaction[]
+  expenses         Expense[]
 
   @@index([companyId])
 }
@@ -450,6 +503,7 @@ model CreditCardTransaction {
   notes        String?
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
+  linkedBankTransaction BankTransaction? @relation("CardTxnLink")
 
   @@index([companyId, date])
   @@index([creditCardId])
@@ -471,8 +525,9 @@ model Employee {
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
 
-  payrolls Payroll[]
-  assets   Asset[]   @relation("EmployeeAssets")
+  payrolls  Payroll[]
+  assets    Asset[]   @relation("EmployeeAssets")
+  documents EmployeeDocument[]
 
   @@unique([companyId, employeeNo])
   @@index([companyId, status])
@@ -488,10 +543,16 @@ model Payroll {
   user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
   periodStart DateTime @db.Date
   periodEnd   DateTime @db.Date
-  salary      Decimal  @db.Decimal(19, 4)
-  notes       String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  salary                   Decimal      @db.Decimal(19, 4)
+  basicSalary              Decimal      @default(0) @db.Decimal(19, 4)
+  foodAllowance            Decimal      @default(0) @db.Decimal(19, 4)
+  accommodationAllowance   Decimal      @default(0) @db.Decimal(19, 4)
+  overtime                 Decimal      @default(0) @db.Decimal(19, 4)
+  deductions               Decimal      @default(0) @db.Decimal(19, 4)
+  status                   RecordStatus @default(POSTED)
+  notes                    String?
+  createdAt                DateTime     @default(now())
+  updatedAt                DateTime     @updatedAt
 
   allocations PayrollAllocation[]
 
@@ -587,6 +648,41 @@ model UserNotificationPreference {
   systemActivity        Boolean @default(true)
 
   @@index([companyId])
+}
+
+model EmployeeDocument {
+  id          String       @id @default(cuid())
+  companyId   String
+  company     Company      @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  employeeId  String
+  employee    Employee     @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  name        String
+  kind        DocumentKind @default(NORMAL)
+  expiryDate  DateTime?    @db.Date
+  notes       String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([companyId])
+  @@index([employeeId])
+  @@index([companyId, expiryDate])
+}
+
+model ProjectPayment {
+  id        String    @id @default(cuid())
+  companyId String
+  company   Company   @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  projectId String
+  project   Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  amount    Decimal   @db.Decimal(19, 4)
+  dueDate   DateTime  @db.Date
+  paidAt    DateTime? @db.Date
+  notes     String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([companyId, dueDate])
+  @@index([projectId])
 }
 
 model CompanyDocument {

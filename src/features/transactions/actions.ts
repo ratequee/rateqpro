@@ -9,7 +9,13 @@ import { writeAuditLog } from "@/lib/audit/write";
 import { transactionFormSchema } from "@/lib/validation/transaction";
 import { categoriesForType } from "@/lib/finance/categories";
 import { fromDateInputValue } from "@/lib/formatting/date";
-import { getPrimaryBankAccount, nextTransactionReference } from "@/services/transactions";
+import { encodePaymentSource } from "@/lib/finance/payment-source";
+import { initialRecordStatus } from "@/lib/finance/approval";
+import {
+  createSourceMovement,
+  markSourceMovementStatus,
+  updateSourceMovement,
+} from "@/lib/finance/source-posting";
 import {
   attachmentStorageKey,
   isAllowedAttachment,
@@ -19,13 +25,19 @@ import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { redirect } from "@/i18n/navigation";
 
 export type TransactionActionState = {
-  error?: "validation" | "forbidden" | "notFound" | "storage" | "generic" | "immutable";
+  error?: "validation" | "forbidden" | "notFound" | "storage" | "generic" | "immutable" | "source";
   fieldError?: string;
 };
 
 function revalidateFinance(locale: string) {
   revalidatePath(`/${locale}/transactions`);
   revalidatePath(`/${locale}/dashboard`);
+  revalidatePath(`/${locale}/bank-accounts`);
+  revalidatePath(`/${locale}/assets`);
+  revalidatePath(`/${locale}/operating-expenses`);
+  revalidatePath(`/${locale}/project-expenses`);
+  revalidatePath(`/${locale}/reports`);
+  revalidatePath(`/${locale}/approvals`);
 }
 
 async function saveAttachment(input: {
@@ -80,7 +92,9 @@ export async function createTransactionAction(
     category: formData.get("category"),
     projectId: formData.get("projectId") ?? "",
     notes: formData.get("notes") ?? "",
-    bankAccountId: formData.get("bankAccountId"),
+    bankAccountId: formData.get("bankAccountId") ?? "",
+    paymentSource: formData.get("paymentSource") ?? formData.get("bankAccountId") ?? "",
+    expenseKind: formData.get("expenseKind") ?? "",
   });
 
   if (!parsed.success) {
@@ -90,15 +104,6 @@ export async function createTransactionAction(
   const allowed = categoriesForType(parsed.data.type);
   if (!allowed.includes(parsed.data.category)) {
     return { error: "validation", fieldError: "category" };
-  }
-
-  const account =
-    (await prisma.bankAccount.findFirst({
-      where: { id: parsed.data.bankAccountId, ...companyScope(user.companyId) },
-    })) ?? (await getPrimaryBankAccount(user.companyId));
-
-  if (!account) {
-    return { error: "generic" };
   }
 
   if (parsed.data.projectId) {
@@ -116,24 +121,33 @@ export async function createTransactionAction(
   }
 
   const locale = await getLocale();
+  const status = initialRecordStatus(user.role);
+  const sourceRaw =
+    parsed.data.paymentSource ||
+    (parsed.data.bankAccountId ? `BANK_ACCOUNT:${parsed.data.bankAccountId}` : "CASH");
 
   try {
-    const created = await prisma.bankTransaction.create({
-      data: {
-        companyId: user.companyId,
-        bankAccountId: account.id,
-        projectId: parsed.data.projectId || null,
-        reference: await nextTransactionReference(user.companyId),
-        date: fromDateInputValue(parsed.data.date),
-        type: parsed.data.type,
-        amount: parsed.data.amount,
-        description: parsed.data.description,
-        category: parsed.data.category,
-        notes: parsed.data.notes || null,
-        status: "POSTED",
-        createdById: user.id,
-      },
+    const posted = await createSourceMovement({
+      companyId: user.companyId,
+      userId: user.id,
+      sourceRaw,
+      date: fromDateInputValue(parsed.data.date),
+      type: parsed.data.type,
+      amount: parsed.data.amount,
+      description: parsed.data.description,
+      category: parsed.data.category,
+      projectId: parsed.data.projectId || null,
+      notes: parsed.data.notes || null,
+      expenseKind:
+        parsed.data.type === "WITHDRAWAL" && parsed.data.expenseKind
+          ? parsed.data.expenseKind
+          : null,
+      status,
     });
+    if ("error" in posted) {
+      return { error: "source" };
+    }
+    const created = posted.row;
 
     try {
       const file = formData.get("attachment");
@@ -190,7 +204,7 @@ export async function updateTransactionAction(
   if (!existing) {
     return { error: "notFound" };
   }
-  if (existing.status !== "POSTED") {
+  if (existing.status !== "POSTED" && existing.status !== "PENDING") {
     return { error: "immutable" };
   }
 
@@ -202,7 +216,14 @@ export async function updateTransactionAction(
     category: formData.get("category"),
     projectId: formData.get("projectId") ?? "",
     notes: formData.get("notes") ?? "",
-    bankAccountId: formData.get("bankAccountId") || existing.bankAccountId,
+    bankAccountId: formData.get("bankAccountId") || existing.bankAccountId || "",
+    paymentSource:
+      formData.get("paymentSource") ||
+      encodePaymentSource(
+        existing.paymentSource,
+        existing.creditCardId ?? existing.cashAdvanceId ?? existing.bankAccountId,
+      ),
+    expenseKind: formData.get("expenseKind") ?? existing.expenseKind ?? "",
   });
   if (!parsed.success) {
     return { error: "validation" };
@@ -221,18 +242,28 @@ export async function updateTransactionAction(
   const locale = await getLocale();
 
   try {
-    const updated = await prisma.bankTransaction.update({
-      where: { id: existing.id },
-      data: {
-        date: fromDateInputValue(parsed.data.date),
-        type: parsed.data.type,
-        amount: parsed.data.amount,
-        description: parsed.data.description,
-        category: parsed.data.category,
-        projectId: parsed.data.projectId || null,
-        notes: parsed.data.notes || null,
-      },
+    const moved = await updateSourceMovement({
+      id: existing.id,
+      companyId: user.companyId,
+      userId: user.id,
+      sourceRaw: parsed.data.paymentSource,
+      date: fromDateInputValue(parsed.data.date),
+      type: parsed.data.type,
+      amount: parsed.data.amount,
+      description: parsed.data.description,
+      category: parsed.data.category,
+      projectId: parsed.data.projectId || null,
+      notes: parsed.data.notes || null,
+      expenseKind:
+        parsed.data.type === "WITHDRAWAL" && parsed.data.expenseKind
+          ? parsed.data.expenseKind
+          : null,
+      status: existing.status,
     });
+    if ("error" in moved) {
+      return { error: moved.error === "notFound" ? "notFound" : "source" };
+    }
+    const updated = moved.row;
 
     const file = formData.get("attachment");
     if (file instanceof File && file.size > 0) {
@@ -288,10 +319,7 @@ export async function voidTransactionAction(id: string): Promise<TransactionActi
     return { error: "immutable" };
   }
 
-  await prisma.bankTransaction.update({
-    where: { id: existing.id },
-    data: { status: "VOIDED", voidedAt: new Date() },
-  });
+  await markSourceMovementStatus(user.companyId, existing.id, "VOIDED");
   await writeAuditLog({
     companyId: user.companyId,
     userId: user.id,
@@ -319,29 +347,32 @@ export async function reverseTransactionAction(id: string): Promise<TransactionA
     return { error: "immutable" };
   }
 
-  await prisma.$transaction(async (tx) => {
-    await tx.bankTransaction.update({
-      where: { id: existing.id },
-      data: { status: "REVERSED" },
-    });
-    await tx.bankTransaction.create({
-      data: {
-        companyId: user.companyId,
-        bankAccountId: existing.bankAccountId,
-        projectId: existing.projectId,
-        reference: await nextTransactionReference(user.companyId, tx),
-        date: new Date(),
-        type: existing.type === "DEPOSIT" ? "WITHDRAWAL" : "DEPOSIT",
-        amount: existing.amount,
-        description: existing.description,
-        category: existing.category,
-        notes: existing.notes,
-        status: "POSTED",
-        reversedOfId: existing.id,
-        createdById: user.id,
-      },
-    });
+  await markSourceMovementStatus(user.companyId, existing.id, "REVERSED", { applyCustody: false });
+  const opposite = existing.type === "DEPOSIT" ? "WITHDRAWAL" : "DEPOSIT";
+  const reversed = await createSourceMovement({
+    companyId: user.companyId,
+    userId: user.id,
+    sourceRaw: encodePaymentSource(
+      existing.paymentSource,
+      existing.creditCardId ?? existing.cashAdvanceId ?? existing.bankAccountId,
+    ),
+    date: new Date(),
+    type: opposite,
+    amount: existing.amount.toString(),
+    description: existing.description,
+    category: existing.category ?? "other",
+    projectId: existing.projectId,
+    notes: existing.notes,
+    expenseKind: existing.expenseKind,
+    status: "POSTED",
+    isTransfer: existing.isTransfer,
   });
+  if ("row" in reversed && reversed.row) {
+    await prisma.bankTransaction.update({
+      where: { id: reversed.row.id },
+      data: { reversedOfId: existing.id },
+    });
+  }
 
   await writeAuditLog({
     companyId: user.companyId,

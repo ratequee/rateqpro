@@ -12,7 +12,9 @@ export const transactionFormSchema = z.object({
   category: z.enum(TRANSACTION_CATEGORIES),
   projectId: z.string().optional().or(z.literal("")),
   notes: z.string().trim().max(2000).optional().or(z.literal("")),
-  bankAccountId: z.string().min(1),
+  bankAccountId: z.string().optional().or(z.literal("")),
+  paymentSource: z.string().min(1),
+  expenseKind: z.enum(["PROJECT", "OPERATING", ""]).optional(),
 });
 
 export type TransactionFormInput = z.infer<typeof transactionFormSchema>;

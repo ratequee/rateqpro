@@ -3,5 +3,5 @@ import { getLocale } from "next-intl/server";
 
 export default async function PayrollRedirect() {
   const locale = await getLocale();
-  redirect({ href: "/employees", locale });
+  redirect({ href: "/salary", locale });
 }

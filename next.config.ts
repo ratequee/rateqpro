@@ -10,6 +10,7 @@ const nextConfig: NextConfig = {
     "pg",
     "@prisma/adapter-pg",
     "@supabase/supabase-js",
+    "unpdf",
   ],
   experimental: {
     serverActions: {

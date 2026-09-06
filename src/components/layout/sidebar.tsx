@@ -10,10 +10,12 @@ import { navigation } from "./nav-config";
 import { navItemActive, useNavPending } from "./nav-pending";
 import { logoutAction } from "@/features/auth/actions";
 import { cn } from "@/lib/utils";
+import { hasPermission } from "@/lib/permissions/check";
+import { NAV_VIEW_MODULE } from "@/lib/permissions/tabs";
 import type { CurrentUser } from "@/lib/auth/current-user";
 
-function AlertCountBadge({ alertCount }: { alertCount: Promise<number> }) {
-  const count = use(alertCount);
+function CountBadge({ countPromise }: { countPromise: Promise<number> }) {
+  const count = use(countPromise);
   if (count <= 0) return null;
   return (
     <span className="min-w-5 rounded-full bg-gold-bright px-1.5 py-0.5 text-center text-[9px] font-bold text-[#5a3500]">
@@ -25,10 +27,12 @@ function AlertCountBadge({ alertCount }: { alertCount: Promise<number> }) {
 export function Sidebar({
   user,
   alertCount,
+  unreadAlerts,
   onNavigate,
 }: {
   user: CurrentUser;
   alertCount: Promise<number>;
+  unreadAlerts: Promise<number>;
   onNavigate?: () => void;
 }) {
   const t = useTranslations("nav");
@@ -57,13 +61,18 @@ export function Sidebar({
         </Link>
       </div>
       <nav className="flex-1 overflow-y-auto px-2 py-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {navigation.map((group) => (
+        {navigation.map((group) => {
+          const items = group.items.filter((item) =>
+            hasPermission(user.role, NAV_VIEW_MODULE[item.key], "view", user.permissionKeys),
+          );
+          if (items.length === 0) return null;
+          return (
           <div key={group.key} className="mb-1">
             <p className="px-2 pt-2.5 pb-1 text-[9.5px] font-bold uppercase tracking-[0.1em] text-white/33">
               {t(group.key)}
             </p>
             <ul>
-              {group.items.map((item) => {
+              {items.map((item) => {
                 const Icon = item.icon;
                 const active = navItemActive(pathname, item.href, pendingHref);
                 return (
@@ -85,7 +94,9 @@ export function Sidebar({
                       <span className="flex-1">{t(item.key)}</span>
                       {item.badge ? (
                         <Suspense fallback={null}>
-                          <AlertCountBadge alertCount={alertCount} />
+                          <CountBadge
+                            countPromise={item.badge === "alerts" ? unreadAlerts : alertCount}
+                          />
                         </Suspense>
                       ) : null}
                     </Link>
@@ -94,7 +105,8 @@ export function Sidebar({
               })}
             </ul>
           </div>
-        ))}
+          );
+        })}
       </nav>
       <div className="flex items-center gap-2.5 border-t border-white/10 px-3.5 py-3">
         <InitialsAvatar name={user.name} tone="gold" size="sm" className="size-8 text-sm" />

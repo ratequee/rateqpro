@@ -17,6 +17,7 @@ const managerDenied: PermissionKey[] = [
 
 const employeeAllowed: PermissionKey[] = [
   "dashboard.view",
+  "approvals.view",
   "transactions.view",
   "projects.view",
   "contracts.view",
@@ -26,11 +27,16 @@ const employeeAllowed: PermissionKey[] = [
   "cashAdvances.view",
   "cashAdvances.create",
   "creditCards.view",
+  "bankAccounts.view",
+  "bankReader.view",
   "employees.view",
   "payroll.view",
   "assets.view",
   "cashFlow.view",
   "obligations.view",
+  "tax.view",
+  "clients.view",
+  "documents.view",
   "reports.view",
   "notifications.view",
   "settings.view",
@@ -54,11 +60,17 @@ export function hasPermission(
   role: UserRole,
   module: PermissionModule,
   action: PermissionAction,
+  grantedKeys?: readonly PermissionKey[] | null,
 ): boolean {
   if (role === "SUPER_ADMIN") {
     return true;
   }
   const key = `${module}.${action}` as PermissionKey;
+  if (grantedKeys != null) {
+    const canView = grantedKeys.includes(`${module}.view` as PermissionKey);
+    if (action === "view") return canView;
+    return canView && permissionsForRole(role).includes(key);
+  }
   return permissionsForRole(role).includes(key);
 }
 

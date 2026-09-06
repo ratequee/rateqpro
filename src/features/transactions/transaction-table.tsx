@@ -17,7 +17,8 @@ type Row = {
   amount: string;
   description: string;
   category: string | null;
-  status: "POSTED" | "VOIDED" | "REVERSED";
+  status: "PENDING" | "POSTED" | "VOIDED" | "REVERSED";
+  sourceLabel?: string;
   project: { code: string; name: string } | null;
   createdBy: { name: string };
 };
@@ -51,6 +52,7 @@ export function TransactionTable({
               <th className="px-4 py-3 font-semibold">{t("reference")}</th>
               <th className="px-4 py-3 font-semibold">{t("date")}</th>
               <th className="px-4 py-3 font-semibold">{t("description")}</th>
+              <th className="px-4 py-3 font-semibold">{t("source")}</th>
               <th className="px-4 py-3 font-semibold">{t("project")}</th>
               <th className="px-4 py-3 font-semibold">{t("deposit")}</th>
               <th className="px-4 py-3 font-semibold">{t("withdrawal")}</th>
@@ -77,6 +79,7 @@ export function TransactionTable({
                     </div>
                   ) : null}
                 </td>
+                <td className="px-4 py-3 text-muted-foreground">{row.sourceLabel ?? "—"}</td>
                 <td className="px-4 py-3 text-muted-foreground">
                   {row.project ? `${row.project.code}` : "—"}
                 </td>
