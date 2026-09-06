@@ -3,7 +3,7 @@
 import { requireUser } from "@/lib/auth/guards";
 import { prisma } from "@/lib/db/prisma";
 import { companyScope } from "@/lib/db/tenant";
-import { PERMISSION_CATALOG, type PermissionKey } from "@/lib/permissions/catalog";
+import { PERMISSION_CATALOG } from "@/lib/permissions/catalog";
 import { failState, okState, revalidateApp } from "@/features/records/helpers";
 import type { RecordActionState } from "@/features/records/state";
 
@@ -40,8 +40,4 @@ export async function saveTeamPermissionsAction(
 
   await revalidateApp(["/team", "/users", "/dashboard"]);
   return okState();
-}
-
-export function viewKeysForUser(keys: string[]): PermissionKey[] {
-  return keys.filter((key) => key.endsWith(".view")) as PermissionKey[];
 }
