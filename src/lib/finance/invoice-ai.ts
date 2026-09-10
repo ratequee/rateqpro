@@ -16,8 +16,10 @@ Rules:
 - invoiceNumber is Bill No / Invoice No and must contain a digit. Never use the word Date, Total, or Page.
 - vendor is the English supplier name only (e.g. LuLu Trading). No Arabic tagline, address, or customer name.
 - items must be ONLY the DESCRIPTION / التفاصيل column cells. From a row like "1 | TILE GLUE SALINA 20 KG | 20 | PCS | 14.50 | 290.00" the item is "TILE GLUE SALINA 20 KG". Keep pack size in the name (20 KG, 1MM). Drop SN, QTY, UNIT, UNIT PRICE, AMOUNT, and currency.
+- If a line is blurry or unreadable, omit it. Never transcribe garbled OCR. If no items are readable, items must be [] and description "".
 - Never put QTY, PCS/PKT, unit price, amount, Subtotal, Sales Tax, TOTAL, Terms & Conditions, payment notes, addresses, or customer names in items.
-- description MUST be those item names joined by ", " and nothing else. Example: "TILE GLUE SALINA 20 KG, TILE LEVELING SPACER 1MM".
+- description MUST be those readable item names joined by ", " and nothing else. Example: "TILE GLUE SALINA 20 KG, TILE LEVELING SPACER 1MM". If items is empty, description must be "".
+- notes should be vendor and invoice number only. No addresses, terms, customers, or item dump.
 - amount is Grand Total / Net Total.
 - Most supplier invoices are WITHDRAWAL. Use DEPOSIT only if this is money received.`;
 

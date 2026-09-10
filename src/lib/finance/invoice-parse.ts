@@ -219,12 +219,29 @@ function toDescriptionColumn(line: string): string {
   );
 }
 
+function isPlausibleProductName(name: string): boolean {
+  if (name.length < 4 || looksLikeJunkItem(name) || isNoiseLine(name)) return false;
+  if (/\b(?:BG|DCS|PET|PRT|POS|PGS|T0RG)\b/i.test(name)) return false;
+  if (/[A-Za-z]\d+[A-Za-z]/.test(name) && !PRODUCT_SIZE.test(name) && !/\d+\s*hrs?/i.test(name)) {
+    return false;
+  }
+  if (/[A-Za-z]0[A-Za-z]/.test(name)) return false;
+  if (/ر\.?\s*ق|&/.test(name)) return false;
+  const tokens = name.split(/\s+/).filter(Boolean);
+  const english = tokens.filter((token) => /^[A-Za-z][A-Za-z'-]*$/.test(token));
+  if (english.some((word) => word.length >= 4 && !/[aeiouy]/i.test(word))) return false;
+  const hasWord =
+    english.some((word) => word.length >= 4 && /[aeiouy]/i.test(word)) ||
+    /[\u0600-\u06FF]{3,}/.test(name);
+  return hasWord;
+}
+
 function sanitizeLineItems(items: string[]): string[] {
   const out: string[] = [];
   for (const raw of items) {
     for (const part of raw.split(/\s*,\s*/)) {
       const name = toDescriptionColumn(part);
-      if (name.length < 4 || looksLikeJunkItem(name) || isNoiseLine(name)) continue;
+      if (!isPlausibleProductName(name)) continue;
       if (/trading|international|customer|invoice/i.test(name) && !PRODUCT_HINT.test(name)) continue;
       if (/\b(?:pcs|pkt|qty|unit price|amount)\b/i.test(name)) continue;
       out.push(name);
@@ -320,32 +337,22 @@ function shortVendor(vendor: string): string {
   return (english || vendor).slice(0, 60);
 }
 
-function extractCustomer(text: string): string {
-  const match = text.match(/(?:customer(?:\s*name)?|client)\s*[:.\-–]?\s*([A-Z][A-Z0-9 &.'-]{3,})/i);
-  const value = cleanOcrLine(match?.[1] ?? "");
-  if (!value || /invoice|date|bill/i.test(value)) return "";
-  return value.slice(0, 80);
+function isPlausibleVendor(vendor: string): boolean {
+  const value = shortVendor(vendor);
+  if (value.length < 3) return false;
+  if (isNoiseLine(value) || looksLikeJunkItem(value)) return false;
+  if (/[A-Za-z]0[A-Za-z]|shop\s*no|building\s*no|souq|harvest lane/i.test(value)) return false;
+  return /[A-Za-z]{3,}|[\u0600-\u06FF]{3,}/.test(value);
 }
 
-function buildDescription(vendor: string, invoiceNumber: string, items: string[]) {
-  if (items.length > 0) return items.join(", ").slice(0, 240);
-  if (vendor && invoiceNumber) return `${shortVendor(vendor)} · ${invoiceNumber}`.slice(0, 240);
-  if (vendor) return shortVendor(vendor);
-  if (invoiceNumber) return `Invoice ${invoiceNumber}`;
-  return "Invoice";
+function buildDescription(_vendor: string, _invoiceNumber: string, items: string[]) {
+  return items.join(", ").slice(0, 240);
 }
 
-function buildNotes(input: {
-  vendor: string;
-  invoiceNumber: string;
-  items: string[];
-  customer?: string;
-}) {
+function buildNotes(input: { vendor: string; invoiceNumber: string }) {
   return [
-    input.vendor && `Vendor: ${shortVendor(input.vendor)}`,
+    isPlausibleVendor(input.vendor) ? `Vendor: ${shortVendor(input.vendor)}` : null,
     input.invoiceNumber && `Invoice #${input.invoiceNumber}`,
-    input.customer && `Customer: ${input.customer}`,
-    input.items.length > 0 ? `Items: ${input.items.join(", ")}` : null,
   ]
     .filter(Boolean)
     .join("\n");
@@ -364,10 +371,10 @@ export function parseInvoiceText(text: string): InvoiceExtract | null {
   const invoiceNumber = extractInvoiceNumber(cleaned);
   const vendor = guessVendor(cleaned);
   const items = guessLineItems(cleaned);
-  const customer = extractCustomer(cleaned);
   const category = guessCategory(`${cleaned} ${items.join(" ")}`, type);
-  const description = buildDescription(vendor, invoiceNumber, items);
-  const notes = buildNotes({ vendor, invoiceNumber, items, customer });
+  const vendorName = isPlausibleVendor(vendor) ? shortVendor(vendor) : "";
+  const description = buildDescription(vendorName, invoiceNumber, items);
+  const notes = buildNotes({ vendor: vendorName, invoiceNumber });
 
   let confidence = 0.45;
   if (extractDate(cleaned)) confidence += 0.2;
@@ -382,7 +389,7 @@ export function parseInvoiceText(text: string): InvoiceExtract | null {
     type,
     category,
     notes: notes.slice(0, 2000),
-    vendor: shortVendor(vendor),
+    vendor: vendorName,
     invoiceNumber,
     confidence: Math.min(confidence, 0.95),
     items,
@@ -406,7 +413,8 @@ export function invoiceExtractSchemaShape(value: unknown): InvoiceExtract | null
     invoiceNumberRaw && /\d/.test(invoiceNumberRaw) && !RESERVED_INVOICE_TOKENS.test(invoiceNumberRaw)
       ? invoiceNumberRaw.slice(0, 40)
       : "";
-  const vendor = shortVendor(cleanOcrLine(String(row.vendor ?? "")));
+  const vendorRaw = shortVendor(cleanOcrLine(String(row.vendor ?? "")));
+  const vendor = isPlausibleVendor(vendorRaw) ? vendorRaw : "";
   const itemsFromAi = Array.isArray(row.items) ? row.items.map((item) => String(item)) : [];
   const descriptionRaw = cleanOcrLine(String(row.description ?? ""));
   const items = sanitizeLineItems(itemsFromAi.length > 0 ? itemsFromAi : [descriptionRaw]);
@@ -417,7 +425,7 @@ export function invoiceExtractSchemaShape(value: unknown): InvoiceExtract | null
     description,
     type,
     category,
-    notes: buildNotes({ vendor, invoiceNumber, items }).slice(0, 2000),
+    notes: buildNotes({ vendor, invoiceNumber }).slice(0, 2000),
     vendor,
     invoiceNumber,
     confidence: Math.min(1, Math.max(0, Number(row.confidence ?? 0.7))),
@@ -431,13 +439,11 @@ export function mergeInvoiceExtracts(
 ): InvoiceExtract | null {
   if (!primary) return secondary;
   if (!secondary) return primary;
-  const fromItems = sanitizeLineItems([
-    ...(primary.items ?? []),
-    ...(secondary.items ?? []),
-    secondary.description,
-    primary.description,
-  ]);
-  const vendor = shortVendor(primary.vendor || secondary.vendor);
+  const primaryItems = sanitizeLineItems(primary.items ?? []);
+  const secondaryItems = sanitizeLineItems(secondary.items ?? []);
+  const fromItems = primaryItems.length > 0 ? primaryItems : secondaryItems;
+  const vendorRaw = shortVendor(primary.vendor || secondary.vendor);
+  const vendor = isPlausibleVendor(vendorRaw) ? vendorRaw : "";
   const invoiceNumber = primary.invoiceNumber || secondary.invoiceNumber;
   const description = buildDescription(vendor, invoiceNumber, fromItems);
   return {
@@ -446,12 +452,7 @@ export function mergeInvoiceExtracts(
     description,
     type: primary.type,
     category: primary.category === categoriesForType(primary.type)[0] ? secondary.category : primary.category,
-    notes: buildNotes({
-      vendor,
-      invoiceNumber,
-      items: fromItems,
-      customer: extractCustomer(`${secondary.notes}\n${primary.notes}`),
-    }).slice(0, 2000),
+    notes: buildNotes({ vendor, invoiceNumber }).slice(0, 2000),
     vendor,
     invoiceNumber,
     confidence: Math.max(primary.confidence, secondary.confidence),

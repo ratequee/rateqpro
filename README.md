@@ -10,6 +10,7 @@ This is **not** connected to the existing RateQ application.
 - **Database + files:** Supabase (Postgres + private Storage)
 - **ORM:** Prisma, tenant-scoped (`companyId` on every company record)
 - **Auth:** custom sessions (not Supabase Auth)
+- **Database access:** Prisma only. Public tables have Row-Level Security enabled with no anon/authenticated policies, so the Supabase API keys cannot read or write business data.
 
 ## Environment variables
 

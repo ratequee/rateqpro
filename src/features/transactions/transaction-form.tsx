@@ -95,12 +95,12 @@ export function TransactionForm({
         <InvoiceScanner
           attachmentInputId="attachment"
           onExtract={(result) => {
-            setDate(result.date);
-            setAmount(result.amount);
-            setDescription(result.description);
+            if (result.date) setDate(result.date);
+            if (result.amount) setAmount(result.amount);
+            if (result.description.trim()) setDescription(result.description);
             setType(result.type);
             setCategory(result.category);
-            setNotes(result.notes);
+            if (result.notes.trim()) setNotes(result.notes);
             if (result.type === "WITHDRAWAL") {
               setExpenseKind(
                 ["rent", "salaries", "vehicles", "electricity", "internet", "marketing"].includes(

@@ -5,7 +5,6 @@ import {
   importDescription,
   parseStatementCsv,
   parseStatementDate,
-  parseStatementPdfText,
   parseStatementRows,
   statementTemplateCsv,
   toIsoDate,
@@ -125,55 +124,6 @@ describe("statement helpers", () => {
         balance: 50000,
       }),
     ).toBe("Incoming transfer · REF-001");
-  });
-
-  it("reads QIB-style PDF text with debit, credit, and balance", () => {
-    const text = `
-      Qatar Islamic Bank
-      Statement of Account
-      Date AccountNumber Description Reference Debit Credit Balance
-      01/07/2026 00123456789 Incoming transfer REF-001  10,000.00 50,000.00
-      02/07/2026 00123456789 Salaries REF-002 16,500.00  33,500.00
-    `;
-    const rows = parseStatementPdfText(text, "QIB");
-    expect(rows).toHaveLength(2);
-    expect(rows[0]).toMatchObject({ credit: 10000, debit: 0, balance: 50000 });
-    expect(rows[1]).toMatchObject({ debit: 16500, credit: 0, balance: 33500 });
-  });
-
-  it("reads loose PDF lines with CR/DR markers", () => {
-    const text = `
-      03/07/2026 Client receipt INV-22 8,000.00 CR 41,500.00
-      04/07/2026 Vendor payment BILL-9 1,250.00 DR 40,250.00
-    `;
-    const rows = parseStatementPdfText(text, "QIB");
-    expect(rows).toHaveLength(2);
-    expect(rows[0]).toMatchObject({ credit: 8000, debit: 0, balance: 41500, reference: "INV-22" });
-    expect(rows[1]).toMatchObject({ debit: 1250, credit: 0, balance: 40250 });
-  });
-
-  it("reassembles columnar PDF text and splits multiple dates on one line", () => {
-    const columnar = `
-      01/07/2026
-      Incoming transfer
-      REF-001
-      10,000.00
-      50,000.00
-      02/07/2026
-      Salaries
-      16,500.00
-      33,500.00
-    `;
-    const columnarRows = parseStatementPdfText(columnar, "QIB");
-    expect(columnarRows[0]).toMatchObject({ credit: 10000, debit: 0, balance: 50000 });
-    expect(columnarRows[1]).toMatchObject({ debit: 16500, credit: 0, balance: 33500 });
-
-    const packed =
-      "01/07/2026 Incoming transfer 10,000.00 50,000.00 02/07/2026 Salaries 16,500.00 33,500.00";
-    const packedRows = parseStatementPdfText(packed, "QIB");
-    expect(packedRows).toHaveLength(2);
-    expect(packedRows[0]?.credit).toBe(10000);
-    expect(packedRows[1]?.debit).toBe(16500);
   });
 
   it("still parses Al Ahli withdrawn/deposited columns", () => {

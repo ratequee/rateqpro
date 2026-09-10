@@ -60,13 +60,13 @@ describe("parseInvoiceText", () => {
     expect(result?.invoiceNumber).toBe("28147");
     expect(result?.description).toBe("TILE GLUE SALINA 20 KG, TILE LEVELING SPACER 1MM");
     expect(result?.notes).toContain("Invoice #28147");
-    expect(result?.notes).toContain("TILE GLUE");
     expect(result?.notes).not.toContain("Invoice #Date");
+    expect(result?.notes).not.toMatch(/Items:/);
     expect(result?.vendor.toLowerCase()).toMatch(/lulu|trading|لولو/);
     expect(result?.category).toBe("materials");
   });
 
-  it("recovers item names from messy photo OCR", () => {
+  it("keeps only readable item names from messy photo OCR", () => {
     const text = `
       Lulu TRADING
       Billo: 28147     Page 1of1
@@ -77,9 +77,10 @@ describe("parseInvoiceText", () => {
     `;
     const result = parseInvoiceText(text);
     expect(result?.invoiceNumber).toBe("28147");
-    expect(result?.description.toLowerCase()).toMatch(/glue|tile leveling/);
+    expect(result?.description).toBe("TILE LEVELING SPACER 1MM");
+    expect(result?.description).not.toMatch(/T0RG|SAUNA/i);
     expect(result?.notes).toContain("28147");
-    expect(result?.description.toLowerCase()).not.toBe("lulu trading");
+    expect(result?.notes).not.toMatch(/Items:/);
   });
 
   it("replaces a vendor-only AI description with parsed line items", () => {
@@ -220,7 +221,26 @@ describe("parseInvoiceText", () => {
       ],
       confidence: 0.8,
     });
-    expect(result?.description).toBe("TLE GLUETATINE 20 BG, TILE LEVELING SPACER 1MM");
-    expect(result?.description).not.toMatch(/DCS|PET|14\.|40\.00|ر\.?\s*ق|&/i);
+    expect(result?.description).toBe("TILE LEVELING SPACER 1MM");
+    expect(result?.description).not.toMatch(/GLUETATINE|DCS|PET|14\.|40\.00|ر\.?\s*ق|&|BG/i);
+  });
+
+  it("leaves description empty when item text is unreadable", () => {
+    const result = invoiceExtractSchemaShape({
+      date: "2026-09-01",
+      amount: "330.00",
+      description: "TLE GLUETATINE 20 BG 20 DCS 14. ر.ق",
+      type: "WITHDRAWAL",
+      category: "materials",
+      vendor: "LuLu TRADING",
+      invoiceNumber: "28147",
+      items: ["TLE GLUETATINE 20 BG 20 DCS 14. ر.ق", "T0RG SAUNA 7"],
+      confidence: 0.8,
+    });
+    expect(result?.description).toBe("");
+    expect(result?.amount).toBe("330.00");
+    expect(result?.notes).toContain("Vendor: LuLu TRADING");
+    expect(result?.notes).toContain("Invoice #28147");
+    expect(result?.notes).not.toMatch(/Items:|GLUETATINE|T0RG/);
   });
 });

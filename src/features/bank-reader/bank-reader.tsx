@@ -7,7 +7,6 @@ import {
   Download,
   FileSpreadsheet,
   FileText,
-  FileType,
   RefreshCw,
   Upload,
 } from "lucide-react";
@@ -27,7 +26,7 @@ import {
   type ParsedStatementRow,
 } from "@/lib/finance/statement-parse";
 import { parseStatementWorkbook } from "./read-workbook";
-import { importBankStatementAction, parseStatementPdfAction } from "./actions";
+import { importBankStatementAction } from "./actions";
 
 const BANKS = [
   { code: "QIB", name: "QIB", short: "Qatar Islamic Bank", color: "bg-brand-soft text-primary" },
@@ -37,7 +36,7 @@ const BANKS = [
   { code: "MASRAF", name: "Masraf Al Rayan", short: "مصرف الريان", color: "bg-ok-bg text-success" },
 ] as const;
 
-const ACCEPTED_EXT = new Set(["csv", "xlsx", "xls", "pdf"]);
+const ACCEPTED_EXT = new Set(["csv", "xlsx", "xls"]);
 
 export function BankReader({
   accounts,
@@ -103,16 +102,7 @@ export function BankReader({
     setStep(3);
     try {
       let parsed: ParsedStatementRow[] = [];
-      if (ext === "pdf") {
-        const formData = new FormData();
-        formData.set("file", file);
-        formData.set("bank", bank);
-        const result = await parseStatementPdfAction(formData);
-        if (result.error && result.rows.length === 0) {
-          throw new Error(result.error);
-        }
-        parsed = result.rows;
-      } else if (ext === "csv") {
+      if (ext === "csv") {
         parsed = parseStatementCsv(await file.text(), bank);
       } else {
         parsed = await parseStatementWorkbook(await file.arrayBuffer(), bank);
@@ -269,7 +259,7 @@ export function BankReader({
           <label className="flex cursor-pointer flex-col items-center rounded-[13px] border-2 border-dashed border-border bg-muted px-5 py-9 text-center hover:border-primary hover:bg-brand-soft">
             <input
               type="file"
-              accept=".csv,.xlsx,.xls,.pdf,text/csv,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+              accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
               className="hidden"
               onChange={(event) => {
                 void handleFile(event.target.files?.[0]);
@@ -280,10 +270,6 @@ export function BankReader({
             <div className="text-[15px] font-bold">{reading ? t("reading") : t("drop")}</div>
             <div className="mt-1 text-xs text-muted-foreground">{t("csvOnly")}</div>
             <div className="mt-3 flex gap-2">
-              <span className="rounded-full border border-er-border bg-er-bg px-3 py-1 text-[11px] font-bold text-er-fg">
-                <FileType className="me-1 inline size-3" />
-                PDF
-              </span>
               <span className="rounded-full border border-ok-border bg-ok-bg px-3 py-1 text-[11px] font-bold text-ok-fg">
                 <FileSpreadsheet className="me-1 inline size-3" />
                 Excel
